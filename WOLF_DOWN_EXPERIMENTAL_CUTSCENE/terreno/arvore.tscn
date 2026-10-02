@@ -1,0 +1,18 @@
+[gd_scene load_steps=3 format=3 uid="uid://t508kewbo0h2"]
+
+[ext_resource type="Texture2D" uid="uid://du4pe87q7ydn7" path="res://decoração/arvore.png" id="1_bhlaw"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_8k8jl"]
+radius = 49.1859
+
+[node name="arvore" type="StaticBody2D"]
+collision_layer = 8
+collision_mask = 7
+
+[node name="collision" type="CollisionShape2D" parent="."]
+position = Vector2(29, 99.5)
+shape = SubResource("CircleShape2D_8k8jl")
+
+[node name="texture" type="Sprite2D" parent="."]
+scale = Vector2(4.21875, 4.21875)
+texture = ExtResource("1_bhlaw")

@@ -1,0 +1,61 @@
+[gd_scene format=3 uid="uid://busg85easv476"]
+
+[ext_resource type="Texture2D" uid="uid://bymfntglh4gfp" path="res://menu/capa_wolf.png" id="2_mi0jk"]
+[ext_resource type="FontFile" uid="uid://dsrmiqvo50amr" path="res://fonts/MountainsofChristmas-Bold.ttf" id="4_17k1a"]
+[ext_resource type="Script" uid="uid://cc5o2mmd4lrv4" path="res://ui/interactive_button.gd" id="5_button"]
+[ext_resource type="Script" uid="uid://dot0wtkkinec2" path="res://leveis/menu.gd" id="9_menu"]
+
+[node name="menu" type="Control" unique_id=795898009]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 2.0
+offset_top = 5.0
+offset_right = 2.0
+offset_bottom = 5.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("9_menu")
+
+[node name="TextureRect" type="TextureRect" parent="." unique_id=1332495807]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("2_mi0jk")
+
+[node name="buttons_conteins" type="VBoxContainer" parent="." unique_id=1382589533]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -300.0
+offset_top = -360.0
+offset_right = -60.0
+offset_bottom = -60.0
+grow_horizontal = 0
+grow_vertical = 0
+
+[node name="Button" type="Button" parent="buttons_conteins" unique_id=1521710232]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("4_17k1a")
+text = "START"
+script = ExtResource("5_button")
+
+[node name="Button2" type="Button" parent="buttons_conteins" unique_id=910406]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("4_17k1a")
+text = "CONTROL"
+script = ExtResource("5_button")
+
+[node name="Button3" type="Button" parent="buttons_conteins" unique_id=814071746]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("4_17k1a")
+text = "QUIT GAME"
+script = ExtResource("5_button")

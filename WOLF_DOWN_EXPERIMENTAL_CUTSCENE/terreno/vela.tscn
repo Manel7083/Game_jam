@@ -1,0 +1,26 @@
+[gd_scene load_steps=4 format=3 uid="uid://bftt2avajyy7t"]
+
+[ext_resource type="Texture2D" uid="uid://dxdorp1kutdlo" path="res://decoração/vela.png" id="1_bw4ny"]
+[ext_resource type="Texture2D" uid="uid://cxsbg5eyuc2i5" path="res://bullet/light2D-gradient.png" id="2_8et88"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_et7o4"]
+radius = 16.0312
+
+[node name="vela" type="StaticBody2D"]
+collision_layer = 0
+collision_mask = 3
+
+[node name="collision" type="CollisionShape2D" parent="."]
+position = Vector2(4, 21)
+shape = SubResource("CircleShape2D_et7o4")
+disabled = true
+
+[node name="texture" type="Sprite2D" parent="."]
+texture = ExtResource("1_bw4ny")
+
+[node name="light" type="PointLight2D" parent="."]
+position = Vector2(6, 23)
+scale = Vector2(0.43457, 0.43457)
+color = Color(1, 0.388235, 1, 1)
+energy = 2.0
+texture = ExtResource("2_8et88")

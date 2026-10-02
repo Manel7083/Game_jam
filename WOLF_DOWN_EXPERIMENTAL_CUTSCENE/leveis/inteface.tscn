@@ -1,0 +1,59 @@
+[gd_scene load_steps=7 format=3 uid="uid://c0eloinuerpxy"]
+
+[ext_resource type="Script" path="res://leveis/inteface.gd" id="1_pundu"]
+[ext_resource type="FontFile" uid="uid://boh7g0prolevh" path="res://fonts/MountainsofChristmas-Regular.ttf" id="2_15yvs"]
+[ext_resource type="Texture2D" uid="uid://c82emsrrb1hx8" path="res://player_sprites/lobo3x4.png" id="2_es2vs"]
+[ext_resource type="Texture2D" uid="uid://cqeimfoqvy6si" path="res://bullet/fundo.png" id="2_pivuo"]
+[ext_resource type="Texture2D" uid="uid://ditjwnlf4t1xt" path="res://bullet/progresso.png" id="3_ykk10"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_tkq00"]
+font = ExtResource("2_15yvs")
+font_size = 64
+
+[node name="inteface" type="CanvasLayer"]
+script = ExtResource("1_pundu")
+
+[node name="barra_munição" type="TextureProgressBar" parent="."]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = -99.0
+offset_right = 370.0
+grow_vertical = 0
+value = 100.0
+fill_mode = 3
+nine_patch_stretch = true
+texture_under = ExtResource("2_pivuo")
+
+[node name="barra_municao" type="TextureProgressBar" parent="barra_munição"]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 33.0
+offset_top = -76.0
+offset_right = 361.0
+offset_bottom = -31.0
+grow_vertical = 0
+value = 100.0
+nine_patch_stretch = true
+texture_progress = ExtResource("3_ykk10")
+
+[node name="HP" type="Label" parent="."]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 180.0
+offset_top = -183.0
+offset_right = 335.0
+offset_bottom = -93.0
+grow_vertical = 0
+size_flags_horizontal = 0
+text = "HP"
+label_settings = SubResource("LabelSettings_tkq00")
+horizontal_alignment = 1
+
+[node name="Sprite2D" type="Sprite2D" parent="HP"]
+position = Vector2(-86.0001, 19)
+scale = Vector2(0.132391, 0.132391)
+texture = ExtResource("2_es2vs")

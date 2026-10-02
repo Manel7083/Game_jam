@@ -1,0 +1,43 @@
+[gd_scene load_steps=6 format=3 uid="uid://dgf0kx3anuws5"]
+
+[ext_resource type="Script" path="res://bullet/bullet.gd" id="1_0udhx"]
+[ext_resource type="Texture2D" uid="uid://cefuwxhi6bfgr" path="res://bullet/tiro.png" id="2_yk02j"]
+[ext_resource type="AudioStream" uid="uid://cylea1ilsj5om" path="res://bullet/gunshot_38.wav" id="3_5a6f7"]
+[ext_resource type="Texture2D" uid="uid://cxsbg5eyuc2i5" path="res://bullet/light2D-gradient.png" id="4_0l8xj"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_aejh8"]
+size = Vector2(8, 7)
+
+[node name="bullet" type="Area2D"]
+z_index = 3
+collision_layer = 0
+collision_mask = 2
+script = ExtResource("1_0udhx")
+
+[node name="collison" type="CollisionShape2D" parent="."]
+position = Vector2(2, 0.5)
+shape = SubResource("RectangleShape2D_aejh8")
+
+[node name="texture" type="Sprite2D" parent="."]
+scale = Vector2(0.312866, 0.312866)
+texture = ExtResource("2_yk02j")
+flip_h = true
+
+[node name="screen_visible" type="VisibleOnScreenNotifier2D" parent="."]
+position = Vector2(2, 0.249999)
+scale = Vector2(0.4, 0.375)
+
+[node name="PointLight2D" type="PointLight2D" parent="."]
+position = Vector2(1, -1)
+scale = Vector2(0.0234375, 0.0234375)
+energy = 5.0
+texture = ExtResource("4_0l8xj")
+
+[node name="som_bala" type="AudioStreamPlayer2D" parent="."]
+stream = ExtResource("3_5a6f7")
+pitch_scale = 0.4
+autoplay = true
+area_mask = 2
+
+[connection signal="body_entered" from="." to="." method="_on_body_entered"]
+[connection signal="screen_exited" from="screen_visible" to="." method="_on_screen_visible_screen_exited"]
