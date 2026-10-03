@@ -1,5 +1,6 @@
 class_name OpeningCinematic
 extends Control
+
 ## Wolf Down - Cinemática de abertura (v2).
 ## Arte 100% procedural em _draw(), num canvas virtual de 1920x1080 que escala para qualquer
 ## resolução. Câmera (zoom/pan), tremor, relâmpagos, névoa e brilhos suaves usam texturas
@@ -10,21 +11,38 @@ const TYPE_SPEED: float = 0.028
 const NEXT_LEVEL_INDEX: int = 1 # 0 = Tutorial, 1 = Level 1 (a cena de controles já ensina o básico)
 const FONT_BOLD: FontFile = preload("res://fonts/MountainsofChristmas-Bold.ttf")
 const MUSIC_PATH: String = "res://leveis/moonlight_hollow.wav"
+const AUDIO_DIR: String = "res://audio/"
+const THUNDER_PATH: String = "res://audio/thunder.wav"
+const SHOT_AUDIO: Array[String] = [
+	"shot_00_prologo.wav",
+	"shot_01_sepulturas.wav",
+	"shot_02_vilarejo.wav",
+	"shot_03_castelo.wav",
+	"shot_04_cripta.wav",
+	"shot_05_trono.wav",
+	"shot_06_cacador.wav",
+	"shot_07_olho_lobo.wav",
+	"shot_08_controles.wav",
+	"shot_09_final.wav"
+]
 
+var _shot_player: AudioStreamPlayer
+var _prev_flash: float = 0.0
+var _thunder_cd: float = 0.0
 @export var force_fullscreen: bool = true
 @export var play_music: bool = true
 
 const SHOT_DURATION: Array[float] = [
-	4.5, # 0 - Prólogo
-	5.0, # 1 - Sepulturas
-	5.0, # 2 - Vilarejo
-	5.5, # 3 - Castelo
-	6.0, # 4 - Despertar do Drácula
-	5.5, # 5 - Drácula Despertado
-	8.0, # 6 - O Caçador
-	8.0, # 7 - Olho do Lobo
+	6, # 0 - Prólogo
+	12.5, # 1 - Sepulturas
+	12.5, # 2 - Vilarejo
+	12.5, # 3 - Castelo
+	12.5, # 4 - Despertar do Drácula
+	12.5, # 5 - Drácula Despertado
+	12.5, # 6 - O Caçador
+	12.5, # 7 - Olho do Lobo
 	12.5, # 8 - Controles
-	7.5  # 9 - Título Final
+	12.5  # 9 - Título Final
 ]
 
 # Câmera por plano: zoom inicial/final e deslocamento final (em px do canvas virtual).
@@ -99,7 +117,6 @@ func _ready() -> void:
 	_make_textures()
 	_make_styles()
 	_build_ui()
-	_start_music()
 	_reset_shot()
 	resized.connect(_apply_ui_scale)
 	queue_redraw()
@@ -110,6 +127,7 @@ func _process(delta: float) -> void:
 		return
 	_elapsed += delta
 	_total += delta
+	_update_thunder(delta)
 
 	var current_text: String = _story[_shot]
 	if _elapsed > 0.5 and _typing_index < current_text.length():
@@ -186,6 +204,7 @@ func _reset_shot() -> void:
 	_story_label.visible = (_shot != 8)
 	_hint_label.visible = true
 	_progress_label.visible = true
+	_play_shot_audio()
 	queue_redraw()
 
 
@@ -199,8 +218,9 @@ func _finish() -> void:
 	_title_label.visible = false
 	_fade_value = 1.0
 	queue_redraw()
-	if is_instance_valid(_music):
-		create_tween().tween_property(_music, "volume_db", -60.0, 0.6)
+	for p in [_shot_player, _music]:
+		if is_instance_valid(p):
+			create_tween().tween_property(p, "volume_db", -60.0, 0.6)
 	await get_tree().create_timer(0.7, true, false, true).timeout
 	GameManager.load_level(NEXT_LEVEL_INDEX)
 
@@ -1450,3 +1470,42 @@ func _scene_final() -> void:
 		Vector2(cx, dec_y + 10.0), 
 		Vector2(cx - 10.0, dec_y)
 	]), Color(1.0, 0.5, 0.45, 0.9 * t))
+
+func _play_shot_audio() -> void:
+	if not play_music:
+		return
+	# some com o audio do plano anterior (caso o jogador tenha pulado)
+	if is_instance_valid(_shot_player):
+		var old: AudioStreamPlayer = _shot_player
+		var tw := create_tween()
+		tw.tween_property(old, "volume_db", -50.0, 0.25)
+		tw.tween_callback(old.queue_free)
+	var path: String = AUDIO_DIR + SHOT_AUDIO[_shot]
+	if not ResourceLoader.exists(path):
+		return
+	_shot_player = AudioStreamPlayer.new()
+	_shot_player.stream = load(path)
+	_shot_player.volume_db = -3.0
+	add_child(_shot_player)
+	_shot_player.play()
+
+
+## Dispara o trovao no momento em que o relampago acende na tela.
+func _update_thunder(delta: float) -> void:
+	_thunder_cd = maxf(_thunder_cd - delta, 0.0)
+	var f: float = _lightning_for_shot()
+	if f > 0.3 and _prev_flash <= 0.3 and _thunder_cd <= 0.0:
+		_play_thunder()
+		_thunder_cd = 1.5
+	_prev_flash = f
+
+
+func _play_thunder() -> void:
+	if not play_music or not ResourceLoader.exists(THUNDER_PATH):
+		return
+	var p := AudioStreamPlayer.new()
+	p.stream = load(THUNDER_PATH)
+	p.volume_db = -4.0
+	add_child(p)
+	p.finished.connect(p.queue_free)
+	p.play()
