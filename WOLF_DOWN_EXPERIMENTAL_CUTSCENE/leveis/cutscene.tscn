@@ -1,8 +1,9 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://ci0xk5jamkkrs"]
 
-[ext_resource type="Script" path="res://leveis/cutscene.gd" id="1_cutscene"]
+[ext_resource type="Script" uid="uid://ntg8j80as3nb" path="res://leveis/cutscene.gd" id="1_cutscene"]
+[ext_resource type="AudioStream" uid="uid://bdh6xld3rx388" path="res://audio/musica_halloween.wav" id="2_kdoss"]
 
-[node name="Cutscene" type="Control"]
+[node name="Cutscene" type="Control" unique_id=443913490]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -11,3 +12,9 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("1_cutscene")
+
+[node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="." unique_id=953028909]
+stream = ExtResource("2_kdoss")
+volume_db = -13.684
+pitch_scale = 0.83
+autoplay = true

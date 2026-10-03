@@ -3,13 +3,12 @@
 [ext_resource type="Script" uid="uid://b4hgwh2xx8glt" path="res://leveis/level_1.gd" id="1_6jbuc"]
 [ext_resource type="PackedScene" uid="uid://ysa8nimoiash" path="res://player_sprites/wolf.tscn" id="2_ibcge"]
 [ext_resource type="Texture2D" uid="uid://bp7uat5k7qmtm" path="res://terreno/terreno_sprites.jpeg" id="2_rt6jh"]
-[ext_resource type="PackedScene" uid="uid://dv1dj35dhswch" path="res://enemies_sprites/enemie.tscn" id="3_y577a"]
 [ext_resource type="Texture2D" uid="uid://3bskdkyl5j13" path="res://terreno/grass.jpeg" id="5_o0t2q"]
 [ext_resource type="Texture2D" uid="uid://bx1mcweg3kuu5" path="res://terreno/tijolo.jpeg" id="6_elvli"]
 [ext_resource type="Texture2D" uid="uid://dv01r4ey6grp5" path="res://terreno/areia.jpeg" id="7_ja7ie"]
 [ext_resource type="Texture2D" uid="uid://ctb8yslu0jpsu" path="res://decora├º├úo/decora├º├úo.png" id="8_4m8lt"]
-[ext_resource type="AudioStream" uid="uid://ds2oqlubcrnb2" path="res://terreno/hallown.wav" id="8_p8463"]
 [ext_resource type="PackedScene" uid="uid://c0eloinuerpxy" path="res://leveis/inteface.tscn" id="9_7f4vx"]
+[ext_resource type="AudioStream" uid="uid://bdh6xld3rx388" path="res://audio/musica_halloween.wav" id="9_hcb22"]
 [ext_resource type="PackedScene" uid="uid://bftt2avajyy7t" path="res://terreno/vela.tscn" id="11_cqa4c"]
 [ext_resource type="PackedScene" uid="uid://t508kewbo0h2" path="res://terreno/arvore.tscn" id="12_4odyh"]
 [ext_resource type="PackedScene" uid="uid://d3ug7ftpp8nqi" path="res://terreno/abobora.tscn" id="13_qw38i"]
@@ -558,7 +557,6 @@ sources/0 = SubResource("TileSetAtlasSource_5ckqq")
 [node name="level_1" type="Node2D" unique_id=121597479 groups=["level"]]
 position = Vector2(0, 3)
 script = ExtResource("1_6jbuc")
-enemies_scene = ExtResource("3_y577a")
 current_scene = "res://leveis/level_1.tscn"
 next_scene = "res://leveis/level_2.tscn"
 
@@ -590,7 +588,7 @@ autostart = true
 color = Color(1, 0.757442, 0.996739, 1)
 
 [node name="music_background" type="AudioStreamPlayer2D" parent="." unique_id=589646400]
-stream = ExtResource("8_p8463")
+stream = ExtResource("9_hcb22")
 autoplay = true
 
 [node name="inteface" parent="." unique_id=1019674225 instance=ExtResource("9_7f4vx")]
@@ -603,15 +601,6 @@ position = Vector2(368, 380)
 z_index = 1
 position = Vector2(793, 411)
 
-[node name="abobora" parent="." unique_id=1446081794 instance=ExtResource("13_qw38i")]
-position = Vector2(184, 190)
-
-[node name="abobora2" parent="." unique_id=795354218 instance=ExtResource("13_qw38i")]
-position = Vector2(630, 192)
-
-[node name="abobora3" parent="." unique_id=1396770247 instance=ExtResource("13_qw38i")]
-position = Vector2(182, 584)
-
 [node name="vela" parent="." unique_id=1732368418 instance=ExtResource("11_cqa4c")]
 position = Vector2(174, 337)
 
@@ -622,5 +611,14 @@ position = Vector2(618, 548)
 position = Vector2(620, 331)
 
 [node name="transition_screen" parent="." unique_id=2097109907 instance=ExtResource("14_fmuur")]
+
+[node name="abobora" parent="." unique_id=1446081794 instance=ExtResource("13_qw38i")]
+position = Vector2(184, 190)
+
+[node name="abobora2" parent="." unique_id=795354218 instance=ExtResource("13_qw38i")]
+position = Vector2(630, 192)
+
+[node name="abobora3" parent="." unique_id=1396770247 instance=ExtResource("13_qw38i")]
+position = Vector2(182, 584)
 
 [connection signal="timeout" from="spawn_time" to="." method="_on_spawn_time_timeout"]
