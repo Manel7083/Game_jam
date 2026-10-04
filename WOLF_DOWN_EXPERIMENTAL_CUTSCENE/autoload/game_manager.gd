@@ -15,16 +15,17 @@ const PAUSE_MENU_SCENE := "res://ui/pause_menu.tscn"
 const GAME_OVER_SCENE := "res://ui/game_over.tscn"
 const LEVEL_COMPLETE_SCENE := "res://ui/level_complete.tscn"
 
-# Ordered progression. Levels 3-5 and the boss are appended here as they are built.
+# Ordered progression. Levels 4-5 are appended here as they are built.
 const LEVELS := [
 	{"path": "res://leveis/tutorial.tscn", "title": "TUTORIAL"},
 	{"path": "res://leveis/level_1.tscn", "title": "LEVEL 1 - THE HAUNTED FOREST"},
 	{"path": "res://leveis/level_2.tscn", "title": "LEVEL 2 - DEADMAN'S CEMETERY"},
+	{"path": "res://leveis/level_3.tscn", "title": "LEVEL 3 - DRACULA'S CASTLE"},
 ]
 
 const STARTING_MAX_HP := 5
 const MAX_PLAYER_HP := 10
-const SCORE_PER_LIFE := 5000
+const SCORE_PER_LIFE := 2000
 
 var current_level: int = -1
 var level_active: bool = false
@@ -100,12 +101,17 @@ func complete_level() -> void:
 	_show_overlay(LEVEL_COMPLETE_SCENE)
 
 
+## True when the current level is the last one in LEVELS (the victory screen is shown instead of CONTINUE).
+func is_last_level() -> bool:
+	return current_level >= LEVELS.size() - 1
+
+
 func next_level() -> void:
 	var next_index := current_level + 1
 	if current_level >= 0 and next_index < LEVELS.size():
 		load_level(next_index)
 	else:
-		# Victory screen arrives with the boss milestone; until then the run ends at the menu.
+		# End of the run: back to the menu (the level-complete screen already acts as the victory screen).
 		return_to_menu()
 
 

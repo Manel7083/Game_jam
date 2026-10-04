@@ -1,0 +1,192 @@
+[gd_scene load_steps=12 format=3]
+
+[ext_resource type="Script" path="res://leveis/level_3.gd" id="1_lv3"]
+[ext_resource type="Texture2D" path="res://boss_dracula/sprites/arena_castle.png" id="2_arena"]
+[ext_resource type="PackedScene" path="res://player_sprites/wolf.tscn" id="3_wolf"]
+[ext_resource type="PackedScene" path="res://leveis/inteface.tscn" id="4_hud"]
+[ext_resource type="PackedScene" path="res://leveis/transition_screen.tscn" id="5_trans"]
+[ext_resource type="AudioStream" path="res://audio/musica_halloween.wav" id="6_music"]
+[ext_resource type="Texture2D" path="res://bullet/light2D-gradient.png" id="7_light"]
+
+[sub_resource type="RectangleShape2D" id="shape_top"]
+size = Vector2(896, 72)
+
+[sub_resource type="RectangleShape2D" id="shape_bottom"]
+size = Vector2(896, 32)
+
+[sub_resource type="RectangleShape2D" id="shape_left"]
+size = Vector2(32, 640)
+
+[sub_resource type="RectangleShape2D" id="shape_right"]
+size = Vector2(32, 640)
+
+[sub_resource type="RectangleShape2D" id="shape_ped"]
+size = Vector2(28, 14)
+
+[node name="level_3" type="Node2D" groups=["level"]]
+script = ExtResource("1_lv3")
+
+[node name="arena" type="Sprite2D" parent="."]
+z_index = -5
+centered = false
+texture = ExtResource("2_arena")
+
+[node name="walls" type="StaticBody2D" parent="."]
+collision_layer = 4
+collision_mask = 0
+
+[node name="top" type="CollisionShape2D" parent="walls"]
+position = Vector2(448, 36)
+shape = SubResource("shape_top")
+
+[node name="bottom" type="CollisionShape2D" parent="walls"]
+position = Vector2(448, 624)
+shape = SubResource("shape_bottom")
+
+[node name="left" type="CollisionShape2D" parent="walls"]
+position = Vector2(16, 320)
+shape = SubResource("shape_left")
+
+[node name="right" type="CollisionShape2D" parent="walls"]
+position = Vector2(880, 320)
+shape = SubResource("shape_right")
+
+[node name="pedestal1" type="CollisionShape2D" parent="walls"]
+position = Vector2(160, 266)
+shape = SubResource("shape_ped")
+
+[node name="pedestal2" type="CollisionShape2D" parent="walls"]
+position = Vector2(736, 266)
+shape = SubResource("shape_ped")
+
+[node name="pedestal3" type="CollisionShape2D" parent="walls"]
+position = Vector2(160, 466)
+shape = SubResource("shape_ped")
+
+[node name="pedestal4" type="CollisionShape2D" parent="walls"]
+position = Vector2(736, 466)
+shape = SubResource("shape_ped")
+
+[node name="wolf" parent="." instance=ExtResource("3_wolf")]
+position = Vector2(448, 540)
+
+[node name="BossSpawn" type="Marker2D" parent="."]
+position = Vector2(448, 170)
+
+[node name="CanvasModulate" type="CanvasModulate" parent="."]
+color = Color(0.66, 0.62, 0.9, 1)
+
+[node name="music_background" type="AudioStreamPlayer2D" parent="."]
+stream = ExtResource("6_music")
+autoplay = true
+
+[node name="lights" type="Node2D" parent="."]
+
+[node name="brazier1" type="PointLight2D" parent="lights"]
+position = Vector2(160, 236)
+color = Color(0.78, 0.38, 1, 1)
+energy = 1.7
+texture = ExtResource("7_light")
+texture_scale = 0.9
+
+[node name="brazier2" type="PointLight2D" parent="lights"]
+position = Vector2(736, 236)
+color = Color(0.78, 0.38, 1, 1)
+energy = 1.7
+texture = ExtResource("7_light")
+texture_scale = 0.9
+
+[node name="brazier3" type="PointLight2D" parent="lights"]
+position = Vector2(160, 436)
+color = Color(0.78, 0.38, 1, 1)
+energy = 1.7
+texture = ExtResource("7_light")
+texture_scale = 0.9
+
+[node name="brazier4" type="PointLight2D" parent="lights"]
+position = Vector2(736, 436)
+color = Color(0.78, 0.38, 1, 1)
+energy = 1.7
+texture = ExtResource("7_light")
+texture_scale = 0.9
+
+[node name="torch1" type="PointLight2D" parent="lights"]
+position = Vector2(16, 176)
+color = Color(1, 0.55, 0.25, 1)
+energy = 1.2
+texture = ExtResource("7_light")
+texture_scale = 0.6
+
+[node name="torch2" type="PointLight2D" parent="lights"]
+position = Vector2(16, 336)
+color = Color(1, 0.55, 0.25, 1)
+energy = 1.2
+texture = ExtResource("7_light")
+texture_scale = 0.6
+
+[node name="torch3" type="PointLight2D" parent="lights"]
+position = Vector2(16, 496)
+color = Color(1, 0.55, 0.25, 1)
+energy = 1.2
+texture = ExtResource("7_light")
+texture_scale = 0.6
+
+[node name="torch4" type="PointLight2D" parent="lights"]
+position = Vector2(880, 176)
+color = Color(1, 0.55, 0.25, 1)
+energy = 1.2
+texture = ExtResource("7_light")
+texture_scale = 0.6
+
+[node name="torch5" type="PointLight2D" parent="lights"]
+position = Vector2(880, 336)
+color = Color(1, 0.55, 0.25, 1)
+energy = 1.2
+texture = ExtResource("7_light")
+texture_scale = 0.6
+
+[node name="torch6" type="PointLight2D" parent="lights"]
+position = Vector2(880, 496)
+color = Color(1, 0.55, 0.25, 1)
+energy = 1.2
+texture = ExtResource("7_light")
+texture_scale = 0.6
+
+[node name="wall_flame1" type="PointLight2D" parent="lights"]
+position = Vector2(176, 38)
+color = Color(0.78, 0.38, 1, 1)
+energy = 1.0
+texture = ExtResource("7_light")
+texture_scale = 0.5
+
+[node name="wall_flame2" type="PointLight2D" parent="lights"]
+position = Vector2(320, 38)
+color = Color(0.78, 0.38, 1, 1)
+energy = 1.0
+texture = ExtResource("7_light")
+texture_scale = 0.5
+
+[node name="wall_flame3" type="PointLight2D" parent="lights"]
+position = Vector2(576, 38)
+color = Color(0.78, 0.38, 1, 1)
+energy = 1.0
+texture = ExtResource("7_light")
+texture_scale = 0.5
+
+[node name="wall_flame4" type="PointLight2D" parent="lights"]
+position = Vector2(720, 38)
+color = Color(0.78, 0.38, 1, 1)
+energy = 1.0
+texture = ExtResource("7_light")
+texture_scale = 0.5
+
+[node name="throne_light" type="PointLight2D" parent="lights"]
+position = Vector2(448, 90)
+color = Color(1, 0.25, 0.35, 1)
+energy = 1.0
+texture = ExtResource("7_light")
+texture_scale = 0.8
+
+[node name="inteface" parent="." instance=ExtResource("4_hud")]
+
+[node name="transition_screen" parent="." instance=ExtResource("5_trans")]

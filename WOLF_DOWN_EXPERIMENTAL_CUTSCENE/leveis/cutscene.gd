@@ -33,7 +33,7 @@ var _thunder_cd: float = 0.0
 @export var play_music: bool = true
 
 const SHOT_DURATION: Array[float] = [
-	6, # 0 - Prólogo
+	12.5, # 0 - Prólogo
 	12.5, # 1 - Sepulturas
 	12.5, # 2 - Vilarejo
 	12.5, # 3 - Castelo
@@ -72,27 +72,27 @@ var _key_style: StyleBoxFlat
 var _key_hi_style: StyleBoxFlat
 
 var _story: Array[String] = [
-	"Por séculos, o vilarejo viveu sob o peso de um nome esquecido.",
-	"Então as sepulturas se abriram.\nOs mortos retornaram, e a noite aprendeu a caçar novamente.",
-	"O vilarejo caiu em silêncio.\nPortas foram destruídas. Sangue manchou as ruas.\nNinguém sabia de onde as criaturas vinham.",
-	"No centro da maldição ergue-se um castelo ancestral.\nAlgo em seu interior despertou.",
-	"Sepultado sob a pedra e a escuridão,\nDrácula abre seus olhos mais uma vez.\nO selo foi quebrado.",
-	"Ele se lembra do gosto do sangue.\nEle se lembra do medo.\nE ele se lembra do caçador.",
-	"Um homem adentra a terra amaldiçoada.\nSem exército. Sem testemunhas.\nApenas uma arma... e um motivo para sobreviver.",
-	"Ele não é qualquer caçador.\nNa escuridao iluminado por um lindo luar.\nQue se Desperta seu olhar dourado",
+	"Diz a lenda que, há séculos, um mal antigo foi selado sob o castelo.\nSeu nome foi esquecido... mas ele nunca morreu.",
+	"Então o selo se rompeu.\nAs sepulturas se abriram, e a noite voltou a caçar.",
+	"O vilarejo caiu em silêncio.\nPortas arrombadas, ruas manchadas de sangue.\nNinguém restou para contar de onde vinham as criaturas.",
+	"No alto da colina ergue-se o castelo ancestral.\nÉ de lá que a maldição se espalha.",
+	"Nas profundezas do castelo, o Conde Drácula abre os olhos.\nO selo foi quebrado, e sua sede de séculos despertou.",
+	"Drácula sente o cheiro do sangue.\nSente o medo do povo.\nE sente, ao longe, os passos de um caçador.",
+	"Seu nome ninguem sabe.\nSem exército e sem aliados:\napenas uma arma e um motivo para sobreviver.",
+	"Mas ele não é um caçador comum.\nSob o luar, o sangue desperta o fardo que ele carrega,\ne fazem seus olhos brilharem em dourado.",
 	"GUIAS DE SOBREVIVÊNCIA E CONTROLES",
-	"O castelo está à espera.\nDrácula está acordado.\n\nE a caçada começa..."
+	"O castelo o espera.\nDrácula está desperto.\n\nE a caçada começa..."
 ]
 
 var _titles: Array[String] = [
-	"WOLF DOWN — PRÓLOGO",
-	"AS SEPULTURAS LEMBRAM",
+	"WOLF DOWN — A LENDA",
+	"AS SEPULTURAS SE ABREM",
 	"VILAREJO DE SANGUE",
 	"O CASTELO DESPERTA",
-	"O REI ADORMECIDO",
+	"O SELO SE QUEBRA",
 	"A ESCURIDÃO RETORNA",
 	"O CAÇADOR",
-	"SEU FARDO DESPERTA AO SENTIR O SANGUE",
+	"O FARDO DO LOBO",
 	"COMO SOBREVIVER",
 	"A CAÇADA COMEÇA"
 ]

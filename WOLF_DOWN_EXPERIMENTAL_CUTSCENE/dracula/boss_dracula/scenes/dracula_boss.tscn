@@ -1,0 +1,4 @@
+[gd_scene format=3 uid="uid://bfysrk726p2fa"]
+
+[node name="DraculaBoss" type="CharacterBody2D" unique_id=1857904940]
+motion_mode = 1

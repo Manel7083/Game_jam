@@ -3,7 +3,7 @@ extends CharacterBody2D
 ## Subclasses override only what differs (move_toward_player(), attack(), die()).
 
 @export var max_health: int = 3
-@export var speed: float = 50.0
+@export var speed: float = 90.0
 @export var damage: int = 1
 @export var attack_cooldown: float = 1.0
 @export_range(0.0, 1.0) var knockback_resistance: float = 0.0
