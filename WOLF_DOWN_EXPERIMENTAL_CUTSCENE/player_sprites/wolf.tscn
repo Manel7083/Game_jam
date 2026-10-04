@@ -161,7 +161,7 @@ tracks/4/keys = {
 "times": PackedFloat32Array(0, 0.2, 0.5, 0.8),
 "transitions": PackedFloat32Array(1, 1, 1, 1),
 "update": 0,
-"values": [true, false, true, true]
+"values": [true, false, false, true]
 }
 tracks/5/type = "value"
 tracks/5/imported = false
@@ -462,7 +462,6 @@ position = Vector2(-2, 0)
 zoom = Vector2(2.6, 2.6)
 
 [node name="attack_area" type="Area2D" parent="." unique_id=2135195462]
-visible = false
 collision_layer = 0
 collision_mask = 2
 
