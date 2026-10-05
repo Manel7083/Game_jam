@@ -1,9 +1,15 @@
 extends CanvasLayer
 ## HUD. Driven entirely by GameManager / ObjectiveManager signals - no values are hard-coded.
+## v2: vida, munição e dash agora são desenhados pelo PlayerHUD (player_hud.gd), no estilo da cinemática.
+## Os nós antigos (HP / barra_munição) continuam na cena, só ficam escondidos.
+
+const FONT_BOLD: FontFile = preload("res://fonts/MountainsofChristmas-Bold.ttf")
+const OUTLINE_COL := Color(0.08, 0.0, 0.10)
 
 @onready var hp: Label = $HP
 @onready var ammo_bar: TextureProgressBar = $"barra_munição/barra_municao"
 
+var _player_hud: PlayerHUD
 var _score_label: Label
 var _objective_box: VBoxContainer
 var _banner: Label
@@ -11,6 +17,12 @@ var _reward_label: Label
 
 
 func _ready() -> void:
+	# Esconde a HUD antiga e cria a nova
+	hp.visible = false
+	$"barra_munição".visible = false
+	_player_hud = PlayerHUD.new()
+	add_child(_player_hud)
+
 	_build_extra_ui()
 	GameManager.player_health_changed.connect(update_health)
 	GameManager.ammo_changed.connect(update_ammo)
@@ -24,6 +36,7 @@ func _ready() -> void:
 	_refresh_objective(ObjectiveManager.title, ObjectiveManager.items, ObjectiveManager.done)
 
 
+# Mantidos por compatibilidade com os sinais (a nova HUD lê direto do jogador).
 func update_health(value: int, max_value: int = 0) -> void:
 	var max_hp := max_value if max_value > 0 else GameManager.player_max_hp
 	hp.text = "HP: %d/%d" % [value, max_hp]
@@ -68,8 +81,28 @@ func show_banner(text: String) -> void:
 	tween.tween_property(_banner, "modulate:a", 0.0, 0.6)
 
 
+## Aplica a fonte da cinemática (Mountains of Christmas Bold) com contorno escuro.
+func _style(label: Label, outline: int = 8) -> Label:
+	if label.label_settings != null:
+		var ls := label.label_settings.duplicate() as LabelSettings
+		ls.font = FONT_BOLD
+		ls.outline_size = outline
+		ls.outline_color = OUTLINE_COL
+		ls.shadow_color = Color(0, 0, 0, 0.8)
+		ls.shadow_offset = Vector2(2, 2)
+		label.label_settings = ls
+	else:
+		label.add_theme_font_override("font", FONT_BOLD)
+		label.add_theme_color_override("font_outline_color", OUTLINE_COL)
+		label.add_theme_constant_override("outline_size", outline)
+		label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
+		label.add_theme_constant_override("shadow_offset_x", 2)
+		label.add_theme_constant_override("shadow_offset_y", 2)
+	return label
+
+
 func _build_extra_ui() -> void:
-	_score_label = UIKit.make_label("SCORE  0", 32)
+	_score_label = _style(UIKit.make_label("SCORE  0", 32, Color(1.0, 0.82, 0.45)))
 	add_child(_score_label)
 	_score_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 24)
 	_score_label.grow_horizontal = Control.GROW_DIRECTION_BEGIN
@@ -78,13 +111,13 @@ func _build_extra_ui() -> void:
 	add_child(_objective_box)
 	_objective_box.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT, Control.PRESET_MODE_MINSIZE, 24)
 
-	_banner = UIKit.make_label("", 56, Color(1, 0.85, 0.3))
+	_banner = _style(UIKit.make_label("", 56, Color(1.0, 0.24, 0.18)), 14)
 	add_child(_banner)
 	_banner.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE, 120)
 	_banner.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_banner.modulate.a = 0.0
 
-	_reward_label = UIKit.make_label("HP +1  0/5000", 22, Color(0.95, 0.85, 0.35))
+	_reward_label = _style(UIKit.make_label("HP +1  0/5000", 22, Color(0.95, 0.85, 0.35)), 6)
 	add_child(_reward_label)
 	_reward_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 24)
 	_reward_label.position.y = 62
@@ -96,16 +129,16 @@ func _refresh_objective(title: String, items: Array, done: Array) -> void:
 		child.queue_free()
 	if title.is_empty():
 		return
-	var header := UIKit.make_label("OBJECTIVE", 24, Color(0.8, 0.8, 0.8))
+	var header := _style(UIKit.make_label("OBJECTIVE", 24, Color(0.72, 0.66, 0.82)), 6)
 	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_objective_box.add_child(header)
-	var title_label := UIKit.make_label(title, 32)
+	var title_label := _style(UIKit.make_label(title, 32, Color(0.90, 0.72, 1.0)))
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_objective_box.add_child(title_label)
 	for i in items.size():
 		var mark := "[x] " if done[i] else "[ ] "
-		var color := Color(0.5, 1.0, 0.5) if done[i] else Color.WHITE
-		var line := UIKit.make_label(mark + str(items[i]), 26, color)
+		var color := Color(0.5, 1.0, 0.5) if done[i] else Color(0.95, 0.93, 0.98)
+		var line := _style(UIKit.make_label(mark + str(items[i]), 26, color), 6)
 		line.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		_objective_box.add_child(line)
 

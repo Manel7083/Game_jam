@@ -221,7 +221,7 @@ static func _make_eye_glow() -> GPUParticles2D:
 	p.name = "glow"
 	p.texture = _get_procedural_texture()
 	p.material = _get_additive_material()
-	p.amount = 4
+	p.amount = 2
 	p.lifetime = 0.9
 	p.one_shot = false
 	p.local_coords = true # Acompanha o olho
@@ -232,8 +232,8 @@ static func _make_eye_glow() -> GPUParticles2D:
 	mat.initial_velocity_min = 3.0
 	mat.initial_velocity_max = 10.0
 	mat.gravity = Vector3.ZERO
-	mat.scale_min = 0.1
-	mat.scale_max = 0.22
+	mat.scale_min = 0.06
+	mat.scale_max = 0.14
 	_apply_scale_curve(mat)
 	mat.color_ramp = _neon_ramp()
 	p.process_material = mat
@@ -244,7 +244,7 @@ static func _make_eye_trail() -> GPUParticles2D:
 	p.name = "trail"
 	p.texture = _get_procedural_texture()
 	p.material = _get_additive_material()
-	p.amount = 30
+	p.amount = 14
 	p.lifetime = 0.4
 	p.one_shot = false
 	p.emitting = false
@@ -257,8 +257,8 @@ static func _make_eye_trail() -> GPUParticles2D:
 	mat.initial_velocity_min = 15.0
 	mat.initial_velocity_max = 35.0
 	mat.gravity = Vector3.ZERO
-	mat.scale_min = 0.14
-	mat.scale_max = 0.24
+	mat.scale_min = 0.07
+	mat.scale_max = 0.14
 	_apply_scale_curve(mat)
 	mat.color_ramp = _neon_ramp()
 	p.process_material = mat
@@ -267,9 +267,9 @@ static func _make_eye_trail() -> GPUParticles2D:
 static func _neon_ramp() -> GradientTexture1D:
 	var grad := Gradient.new()
 	grad.colors = PackedColorArray([
-		NEON_YELLOW,
-		NEON_PINK,
-		Color(NEON_PINK.r, NEON_PINK.g, NEON_PINK.b, 0.0)
+		Color(1.0, 0.95, 0.15, 0.55),
+		Color(1.0, 0.2, 0.8, 0.40),
+		Color(1.0, 0.2, 0.8, 0.0)
 	])
 	grad.offsets = PackedFloat32Array([0.0, 0.45, 1.0])
 	var ramp := GradientTexture1D.new()
@@ -429,3 +429,4 @@ static func _apply_scale_curve(mat: ParticleProcessMaterial) -> void:
 	var curve_tex := CurveTexture.new()
 	curve_tex.curve = curve
 	mat.scale_curve = curve_tex
+ 

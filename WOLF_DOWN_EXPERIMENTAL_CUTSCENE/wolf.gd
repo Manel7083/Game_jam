@@ -47,6 +47,7 @@ var is_dashing: bool = false
 var can_dash: bool = true
 var dash_direction := Vector2.ZERO
 var dash_time_left: float = 0.0
+var dash_cooldown_left: float = 0.0   # lido pela HUD (barra roxa de dash)
 var dash_trail: GPUParticles2D
 
 # OLHOS NEON - posição dos olhos no sprite (pixels, relativo ao centro do frame 256x256)
@@ -80,6 +81,11 @@ func _exit_tree() -> void:
 
 func _physics_process(delta: float) -> void:
 	_update_eye_fx()
+	# Cooldown do dash (antes era um await; agora é uma variável para a HUD poder mostrar a barra)
+	if dash_cooldown_left > 0.0:
+		dash_cooldown_left = maxf(dash_cooldown_left - delta, 0.0)
+		if dash_cooldown_left <= 0.0:
+			can_dash = true
 	if can_attack == false:
 		return
 	var viewport_size = get_viewport_rect().size
@@ -214,6 +220,7 @@ func _start_dash() -> void:
 	is_dashing = true
 	can_dash = false
 	dash_time_left = DASH_DURATION
+	dash_cooldown_left = DASH_COOLDOWN
 	
 	# Feedback visual: fica translúcido durante o dash
 	var tween := create_tween()
@@ -225,9 +232,7 @@ func _start_dash() -> void:
 	if dash_trail:
 		dash_trail.emitting = true
 	
-	# Cooldown
-	await get_tree().create_timer(DASH_COOLDOWN).timeout
-	can_dash = true
+	# O cooldown agora é contado em _physics_process (dash_cooldown_left)
 
 
 func _end_dash() -> void:
