@@ -11,6 +11,9 @@ signal score_life_reward(new_max_hp: int, healed_hp: int)
 
 const MENU_SCENE := "res://leveis/menu.tscn"
 const INTRO_CUTSCENE_SCENE := "res://leveis/cutscene.tscn"
+## Cinemática exibida entre o Level 1 e o Level 2 (Lobsome ferido sob o luar, decide melhorar o .38).
+const LEVEL1_AFTERMATH_CUTSCENE := "res://leveis/cutscene_level1.tscn"
+const LEVEL1_PATH := "res://leveis/level_1.tscn"
 const PAUSE_MENU_SCENE := "res://ui/pause_menu.tscn"
 const GAME_OVER_SCENE := "res://ui/game_over.tscn"
 const LEVEL_COMPLETE_SCENE := "res://ui/level_complete.tscn"
@@ -109,6 +112,10 @@ func is_last_level() -> bool:
 func next_level() -> void:
 	var next_index := current_level + 1
 	if current_level >= 0 and next_index < LEVELS.size():
+		# Ao concluir o Level 1 passa primeiro pela cinemática; ela mesma carrega o Level 2 no final.
+		if current_level == _index_of(LEVEL1_PATH) and ResourceLoader.exists(LEVEL1_AFTERMATH_CUTSCENE):
+			load_scene(LEVEL1_AFTERMATH_CUTSCENE)
+			return
 		load_level(next_index)
 	else:
 		# End of the run: back to the menu (the level-complete screen already acts as the victory screen).

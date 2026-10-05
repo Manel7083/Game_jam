@@ -1,0 +1,19 @@
+CUTSCENE PÓS-LEVEL 1 - versão 2 (100% por código, sem PNG)
+
+Arquivo (extraia por cima do projeto, onde fica o project.godot):
+- leveis/cutscene_level1.gd      (substitui o anterior)
+
+autoload/game_manager.gd NÃO muda: o gancho do pacote anterior continua valendo.
+Não precisa mais do player_sprites/lobo3x4.png para esta cena (a referência ao PNG foi removida).
+Música e som continuam opcionais (só tocam se os arquivos existirem).
+
+O que mudou
+- O lobo agora é desenhado por polígonos: pelo roxo, garras, juba, olhos amarelos, arranhões e sangue.
+- Plano 1  DEPOIS DA BATALHA   Lobsome caído de joelhos, respirando; fogueiras, corpos, brasas, névoa, .38 no chão.
+- Plano 2  O LOBO FERIDO       Ele se levanta devagar (como o Drácula saindo da tumba); a câmera sobe, os olhos acendem com clarão.
+- Plano 3  UM .38 JÁ NÃO BASTA Close do revólver na garra ferida, sangue escorrendo, brilho passando no cano.
+- Plano 4  A PRÓXIMA CAÇADA    Silhueta uivando diante da lua cheia; o cemitério (portão, capela acesa) espera ao longe.
+- Extras: letterbox que entra, grão de filme, raios de luar, vapor da respiração, título com fade.
+
+Controles iguais: ENTER/clique avança, ESC pula. Textos e títulos: arrays _story e _titles no topo do script.
+Duração dos planos: SHOT_DURATION. Câmera: ZOOM_FROM, ZOOM_TO, PAN_TO.
