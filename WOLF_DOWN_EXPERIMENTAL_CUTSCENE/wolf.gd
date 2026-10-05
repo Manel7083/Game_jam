@@ -39,8 +39,27 @@ var regen_speed: float = 60.0
 
 var last_shot_time: float = 0.0
 
+# DASH (Shift) - curto, com cooldown e i-frames
+const DASH_SPEED := 320.0      # velocidade durante o dash (andar normal = 100)
+const DASH_DURATION := 0.15    # ~48px de distância
+const DASH_COOLDOWN := 0.8     # contado a partir do início do dash
+var is_dashing: bool = false
+var can_dash: bool = true
+var dash_direction := Vector2.ZERO
+var dash_time_left: float = 0.0
+var dash_trail: GPUParticles2D
+
+# OLHOS NEON - posição dos olhos no sprite (pixels, relativo ao centro do frame 256x256)
+const EYE_BASE_LEFT := Vector2(-8, -14)
+const EYE_BASE_RIGHT := Vector2(6, -14)
+# Deslocamento dos olhos em cada um dos 5 frames da animação "run" (foxy_walk.png)
+const WALK_EYE_SHIFT = [Vector2(0, 0), Vector2(0, 4), Vector2(8, 0), Vector2(8, 0), Vector2(4, 8)]
+var eye_left: Node2D
+var eye_right: Node2D
+
 func _ready():
 	Global.Player = self
+	_setup_dash_input()
 	virtual_mouse_pos = global_position
 	can_attack = true
 	# HP now persists across levels through GameManager instead of resetting to 5.
@@ -48,6 +67,9 @@ func _ready():
 	GameManager.set_player_hp(health)
 	GameManager.set_ammo(ammo, max_ammo)
 	ParticleFX.attach_ambient_dust(self)
+	dash_trail = ParticleFX.create_dash_trail(self)
+	eye_left = ParticleFX.create_eye_fx(self)
+	eye_right = ParticleFX.create_eye_fx(self)
 
 
 func _exit_tree() -> void:
@@ -57,6 +79,7 @@ func _exit_tree() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	_update_eye_fx()
 	if can_attack == false:
 		return
 	var viewport_size = get_viewport_rect().size
@@ -96,7 +119,16 @@ func _physics_process(delta: float) -> void:
 		virtual_mouse_pos.x = clamp(virtual_mouse_pos.x, left, right)
 		virtual_mouse_pos.y = clamp(virtual_mouse_pos.y, top, bottom)
 	
-	velocity = move_direction * speed
+	if Input.is_action_just_pressed("dash") and can_dash and not is_dashing:
+		_start_dash()
+	
+	if is_dashing:
+		dash_time_left -= delta
+		velocity = dash_direction * DASH_SPEED
+		if dash_time_left <= 0.0:
+			_end_dash()
+	else:
+		velocity = move_direction * speed
 	
 	final_dir = (virtual_mouse_pos - global_position).normalized()
 	arma.rotation = final_dir.angle()
@@ -112,7 +144,7 @@ func _physics_process(delta: float) -> void:
 		texture.flip_h = false
 		arma.position.x = -2
 	
-	if Input.is_action_pressed("shoot") and can_shoot and ammo >= ammo_cost:
+	if Input.is_action_pressed("shoot") and can_shoot and not is_dashing and ammo >= ammo_cost:
 		_shoot(final_dir)
 		ParticleFX.muzzle_flash(get_tree().current_scene, ponto_tiro.global_position, final_dir)
 		pistol_animation.play("fire")
@@ -139,6 +171,72 @@ func _physics_process(delta: float) -> void:
 	animate()
 	move_and_slide()
 	attack_handler()
+
+func _update_eye_fx() -> void:
+	if is_dead or not is_instance_valid(eye_left) or not is_instance_valid(eye_right):
+		return
+	
+	# Os olhos balançam junto com a animação de andar
+	var shift := Vector2.ZERO
+	if animation.current_animation == "run" and texture.hframes == 5 \
+			and texture.frame < WALK_EYE_SHIFT.size():
+		shift = WALK_EYE_SHIFT[texture.frame]
+	
+	# Espelha no eixo X quando o sprite está virado para a esquerda
+	var flip := -1.0 if texture.flip_h else 1.0
+	var left := EYE_BASE_LEFT + shift
+	var right := EYE_BASE_RIGHT + shift
+	eye_left.position = texture.position + Vector2(left.x * flip, left.y) * texture.scale
+	eye_right.position = texture.position + Vector2(right.x * flip, right.y) * texture.scale
+	
+	# Rastro só quando está andando (e não durante o ataque)
+	var moving := can_attack and velocity.length() > 5.0
+	ParticleFX.set_eye_trail(eye_left, moving, velocity)
+	ParticleFX.set_eye_trail(eye_right, moving, velocity)
+
+
+func _setup_dash_input() -> void:
+	# Cria a ação "dash" no Shift caso ainda não exista no Project Settings.
+	if not InputMap.has_action("dash"):
+		InputMap.add_action("dash")
+		var key := InputEventKey.new()
+		key.physical_keycode = KEY_SHIFT
+		InputMap.action_add_event("dash", key)
+
+
+func _start_dash() -> void:
+	# Direção: o que o jogador está apertando; parado, dasha para onde o lobo olha.
+	if move_direction.length() > 0.1:
+		dash_direction = move_direction.normalized()
+	else:
+		dash_direction = Vector2.LEFT if texture.flip_h else Vector2.RIGHT
+	
+	is_dashing = true
+	can_dash = false
+	dash_time_left = DASH_DURATION
+	
+	# Feedback visual: fica translúcido durante o dash
+	var tween := create_tween()
+	tween.tween_property(texture, "modulate:a", 0.4, 0.05)
+	tween.tween_property(texture, "modulate:a", 1.0, DASH_DURATION)
+	
+	# Partículas: rajada roxa/amarela + rastro contínuo
+	ParticleFX.dash_start(get_tree().current_scene, global_position, dash_direction)
+	if dash_trail:
+		dash_trail.emitting = true
+	
+	# Cooldown
+	await get_tree().create_timer(DASH_COOLDOWN).timeout
+	can_dash = true
+
+
+func _end_dash() -> void:
+	is_dashing = false
+	dash_direction = Vector2.ZERO
+	if dash_trail:
+		dash_trail.emitting = false
+	ParticleFX.dash_end(get_tree().current_scene, global_position)
+
 
 func animate():
 	
@@ -197,7 +295,7 @@ func _on_attack_area_body_entered(body):
 		
 
 func update_health(value: int) -> void:
-	if is_dead or _invulnerable:
+	if is_dead or _invulnerable or is_dashing:
 		return
 	health = clampi(health - value, 0, GameManager.player_max_hp)
 	GameManager.register_damage(value)
@@ -232,6 +330,10 @@ func _die() -> void:
 	is_dead = true
 	velocity = Vector2.ZERO
 	set_physics_process(false)
+	if dash_trail:
+		dash_trail.emitting = false
+	ParticleFX.stop_eye_fx(eye_left)
+	ParticleFX.stop_eye_fx(eye_right)
 	arma.visible = false
 	animation.pause()
 	texture.modulate = Color(0.6, 0.1, 0.1)

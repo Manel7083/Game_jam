@@ -14,7 +14,7 @@ const FONT_BOLD: FontFile = preload("res://fonts/MountainsofChristmas-Bold.ttf")
 const MUSIC_PATH: String = "res://leveis/moonlight_hollow.wav"
 const WOLF_SOUND_PATH: String = "res://audio/shot_07_olho_lobo.wav"
 
-const SHOT_DURATION: Array[float] = [6.5, 7.5, 6.5, 8.0]
+const SHOT_DURATION: Array[float] = [8.0, 10.5, 10.5, 12.5]
 const ZOOM_FROM: Array[float] = [1.00, 1.02, 1.00, 1.12]
 const ZOOM_TO: Array[float] = [1.10, 1.16, 1.15, 1.00]
 const PAN_TO: Array[Vector2] = [Vector2(0, -10), Vector2(0, 60), Vector2(-70, 10), Vector2(0, 0)]
