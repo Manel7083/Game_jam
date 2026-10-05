@@ -11,7 +11,7 @@ extends Control
 const FONT: FontFile = preload("res://fonts/MountainsofChristmas-Bold.ttf")
 const DESIGN_H: float = 720.0
 
-@export var ui_scale_mult: float = 0.8
+@export var ui_scale_mult: float = 1.0
 @export var margin: Vector2 = Vector2(28.0, 22.0)
 @export var anchor_bottom_left: bool = true   # true = canto inferior esquerdo (onde ficava a HUD antiga)
 const HUD_H: float = 164.0
@@ -47,6 +47,11 @@ var _regen: float = 0.0
 var _dash_shown: float = 1.0
 var _dash_ready_flash: float = 0.0
 var _was_ready: bool = true
+
+# revólver .38
+var _revolver: bool = false
+var _rev_rounds: int = 0
+var _rev_reload: float = 0.0
 
 # valores do frame atual
 var _hp: float = 5.0
@@ -138,6 +143,16 @@ func _process(delta: float) -> void:
 	_ammo_prev = _ammo
 	_ammo_shown = lerpf(_ammo_shown, _ammo, clampf(delta * 14.0, 0.0, 1.0))
 	_shot_flash = maxf(_shot_flash - delta * 5.0, 0.0)
+
+	# Revólver .38 (propriedades podem não existir em versões antigas do wolf.gd)
+	_revolver = p.get("revolver_equipped") == true
+	var rr = p.get("revolver_rounds")
+	var new_rounds: int = int(rr) if rr != null else 0
+	if _revolver and new_rounds < _rev_rounds:
+		_shot_flash = 1.0
+	_rev_rounds = new_rounds
+	var rl = p.get("reload_progress")
+	_rev_reload = float(rl) if rl != null else 0.0
 
 	# Dash
 	_dash_shown = lerpf(_dash_shown, _dash_p, clampf(delta * 20.0, 0.0, 1.0))
@@ -260,6 +275,9 @@ func _draw_health(o: Vector2) -> void:
 
 
 func _draw_ammo(o: Vector2) -> void:
+	if _revolver:
+		_draw_revolver_ammo(o)
+		return
 	var low: bool = _ammo / _ammo_max < 0.25
 	var warn: float = 0.5 + 0.5 * sin(_t * 10.0)
 
@@ -362,3 +380,82 @@ func _draw_dash(o: Vector2) -> void:
 	_txt(Vector2(key.position.x, key.position.y + 22.0), "SHIFT", 18, Color(1, 1, 1, 0.9 if is_ready else 0.5), HORIZONTAL_ALIGNMENT_CENTER, key.size.x)
 	if is_ready:
 		_txt(Vector2(key.end.x + 14.0, bar.position.y + 17.0), "pronto", 20, Color(0.85, 0.60, 1.0, 0.7 + 0.3 * pulse))
+
+
+## Barra do .38: seis cartuchos de latão com ponta de cobre; os gastos ficam vazios.
+func _draw_revolver_ammo(o: Vector2) -> void:
+	var reloading: bool = _rev_reload > 0.0
+	var warn: float = 0.5 + 0.5 * sin(_t * 10.0)
+	var filled: int = _rev_rounds
+	if reloading:
+		filled = maxi(_rev_rounds, int(_rev_reload * 6.0001))
+	var steel := Color(0.58, 0.63, 0.72)
+
+	# Ícone: tambor do revólver (gira ao recarregar)
+	var ic: Vector2 = o + Vector2(26.0, 28.0)
+	_glow(ic, 38.0, 38.0, Color(1.0, 0.8, 0.3, 0.20 + 0.25 * _shot_flash))
+	draw_circle(ic + Vector2(1.0, 2.0), 19.0, Color(0, 0, 0, 0.5))
+	draw_circle(ic, 18.0, steel)
+	draw_circle(ic, 15.0, steel.darkened(0.45))
+	var spin: float = _t * 7.0 if reloading else 0.0
+	for i in 6:
+		var a: float = TAU * float(i) / 6.0 + spin
+		var cp: Vector2 = ic + Vector2(cos(a), sin(a)) * 9.0
+		draw_circle(cp, 4.2, Color(0.04, 0.04, 0.07))
+		if i < filled:
+			draw_circle(cp, 3.0, BRASS.lightened(0.15))
+	draw_circle(ic, 3.0, steel.lightened(0.2))
+
+	# Moldura de latão
+	var bar := Rect2(o.x + BAR_X, o.y + 8.0, 330.0, 28.0)
+	draw_style_box(_frame_brass, bar.grow(4.0))
+	var inner := Rect2(bar.position + Vector2(5.0, 5.0), bar.size - Vector2(10.0, 10.0))
+	draw_rect(inner, Color(0.03, 0.04, 0.07))
+	for rv in [bar.position + Vector2(-1.0, -1.0), Vector2(bar.end.x + 1.0, bar.position.y - 1.0), Vector2(bar.position.x - 1.0, bar.end.y + 1.0), bar.end + Vector2(1.0, 1.0)]:
+		draw_circle(rv, 2.6, BRASS.lightened(0.25))
+	_txt(Vector2(bar.position.x + 2.0, bar.position.y - 8.0), ".38", 16, GOLD)
+
+	# Seis cartuchos
+	var gap: float = 6.0
+	var sw: float = (inner.size.x - gap * 5.0) / 6.0
+	for i in 6:
+		var r := Rect2(inner.position.x + float(i) * (sw + gap), inner.position.y, sw, inner.size.y)
+		if i < filled:
+			var pop: float = 0.0
+			if reloading and i == filled - 1:
+				pop = 1.0 - fposmod(_rev_reload * 6.0, 1.0)
+			_cartridge(r, pop)
+			if _rev_rounds == 1 and i == 0 and not reloading:
+				draw_rect(r.grow(1.0), Color(1.0, 0.3, 0.2, 0.25 + 0.4 * warn), false, 2.0)
+		else:
+			draw_rect(r, Color(0.07, 0.07, 0.10))
+			draw_arc(r.get_center(), 5.0, 0.0, TAU, 14, Color(0.18, 0.18, 0.24), 2.0)
+			if _shot_flash > 0.0 and i == filled:
+				draw_rect(r, Color(1.0, 0.9, 0.6, 0.6 * _shot_flash))
+
+	# Número e avisos
+	var low: bool = _rev_rounds <= 1 and not reloading
+	var num_col: Color = Color(1.0, 0.45, 0.35) if low else GOLD
+	_txt(Vector2(bar.end.x + 18.0, bar.position.y + 24.0), "%d/6" % _rev_rounds, 28, num_col)
+	if reloading:
+		_txt(Vector2(bar.end.x + 84.0, bar.position.y + 22.0), "recarregando", 18, Color(1.0, 0.85, 0.5, 0.5 + 0.4 * sin(_t * 8.0) * sin(_t * 8.0)))
+	elif _rev_rounds <= 0:
+		_txt(Vector2(bar.end.x + 84.0, bar.position.y + 22.0), "R: recarregar", 18, Color(1.0, 0.45, 0.35, 0.5 + 0.5 * warn))
+
+
+func _cartridge(r: Rect2, pop: float) -> void:
+	var w: float = r.size.x
+	var h: float = r.size.y
+	var x: float = r.position.x
+	var y: float = r.position.y - pop * 3.0
+	var casing_w: float = w * 0.60
+	# estojo de latão
+	_vgrad(Rect2(x, y + 4.0, casing_w, h - 8.0), BRASS.lightened(0.35), BRASS.darkened(0.30))
+	draw_rect(Rect2(x, y + 2.0, 4.0, h - 4.0), BRASS.darkened(0.25))
+	draw_rect(Rect2(x + 5.0, y + 6.0, casing_w - 8.0, 2.0), Color(1, 1, 1, 0.30))
+	# projétil de cobre
+	var t0: float = x + casing_w
+	draw_polygon(
+		PackedVector2Array([Vector2(t0, y + 5.0), Vector2(t0 + w * 0.22, y + 5.0), Vector2(x + w, y + h * 0.5), Vector2(t0 + w * 0.22, y + h - 5.0), Vector2(t0, y + h - 5.0)]),
+		PackedColorArray([Color(0.98, 0.66, 0.34), Color(0.98, 0.66, 0.34), Color(0.75, 0.40, 0.20), Color(0.55, 0.28, 0.12), Color(0.55, 0.28, 0.12)]))
+	draw_line(Vector2(t0 + 2.0, y + 7.0), Vector2(x + w - 6.0, y + h * 0.5 - 1.0), Color(1, 1, 1, 0.35), 1.5)

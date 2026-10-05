@@ -22,8 +22,11 @@ const LEVEL_COMPLETE_SCENE := "res://ui/level_complete.tscn"
 const LEVELS := [
 	{"path": "res://leveis/tutorial.tscn", "title": "TUTORIAL"},
 	{"path": "res://leveis/level_1.tscn", "title": "LEVEL 1 - THE HAUNTED FOREST"},
-	{"path": "res://leveis/level_2.tscn", "title": "LEVEL 2 - DEADMAN'S CEMETERY"},
-	{"path": "res://leveis/level_3.tscn", "title": "LEVEL 3 - DRACULA'S CASTLE"},
+	# Depois do Level 1 vem a cutscene (NEXT_LEVEL_INDEX = 2 em cutscene_level1.gd) e então a fase dos guardiões.
+	{"path": "res://leveis/level_gaiola.tscn", "title": "LEVEL 2 - THE GUARDIANS' CAGE"},
+	# Aquecimento antes da maldição.
+	{"path": "res://leveis/level_2.tscn", "title": "LEVEL 3 - DEADMAN'S CEMETERY"},
+	{"path": "res://leveis/level_3.tscn", "title": "LEVEL 4 - DRACULA'S CASTLE"},
 ]
 
 const STARTING_MAX_HP := 5

@@ -50,6 +50,19 @@ var dash_time_left: float = 0.0
 var dash_cooldown_left: float = 0.0   # lido pela HUD (barra roxa de dash)
 var dash_trail: GPUParticles2D
 
+# REVÓLVER .38 (arma desbloqueada na fase da gaiola; persiste entre fases via GameManager.set_meta)
+const REVOLVER_BULLET = preload("res://leveis/revolver_bullet.gd")
+const REVOLVER_CYLINDER := 6
+const REVOLVER_DAMAGE := 4
+const REVOLVER_FIRE_DELAY := 0.38
+const REVOLVER_RELOAD_TIME := 1.3
+var has_revolver: bool = false
+var revolver_equipped: bool = false
+var revolver_rounds: int = REVOLVER_CYLINDER
+var reload_progress: float = 0.0   # 0 = sem recarga; 0..1 durante a recarga (lido pela HUD)
+var _reloading: bool = false
+var _reload_left: float = 0.0
+
 # OLHOS NEON - posição dos olhos no sprite (pixels, relativo ao centro do frame 256x256)
 const EYE_BASE_LEFT := Vector2(-8, -14)
 const EYE_BASE_RIGHT := Vector2(6, -14)
@@ -61,6 +74,7 @@ var eye_right: Node2D
 func _ready():
 	Global.Player = self
 	_setup_dash_input()
+	_setup_weapon_inputs()
 	virtual_mouse_pos = global_position
 	can_attack = true
 	# HP now persists across levels through GameManager instead of resetting to 5.
@@ -71,6 +85,10 @@ func _ready():
 	dash_trail = ParticleFX.create_dash_trail(self)
 	eye_left = ParticleFX.create_eye_fx(self)
 	eye_right = ParticleFX.create_eye_fx(self)
+	if GameManager.get_meta("has_revolver", false):
+		has_revolver = true
+		revolver_equipped = true
+		_apply_weapon_visual()
 
 
 func _exit_tree() -> void:
@@ -86,6 +104,12 @@ func _physics_process(delta: float) -> void:
 		dash_cooldown_left = maxf(dash_cooldown_left - delta, 0.0)
 		if dash_cooldown_left <= 0.0:
 			can_dash = true
+	# Recarga do revólver
+	if _reloading:
+		_reload_left -= delta
+		reload_progress = clampf(1.0 - _reload_left / REVOLVER_RELOAD_TIME, 0.01, 1.0)
+		if _reload_left <= 0.0:
+			_finish_reload()
 	if can_attack == false:
 		return
 	var viewport_size = get_viewport_rect().size
@@ -150,7 +174,11 @@ func _physics_process(delta: float) -> void:
 		texture.flip_h = false
 		arma.position.x = -2
 	
-	if Input.is_action_pressed("shoot") and can_shoot and not is_dashing and ammo >= ammo_cost:
+	if Input.is_action_just_pressed("weapon_swap") and has_revolver:
+		_toggle_weapon()
+	_revolver_logic(final_dir)
+	
+	if not revolver_equipped and Input.is_action_pressed("shoot") and can_shoot and not is_dashing and ammo >= ammo_cost:
 		_shoot(final_dir)
 		ParticleFX.muzzle_flash(get_tree().current_scene, ponto_tiro.global_position, final_dir)
 		pistol_animation.play("fire")
@@ -356,3 +384,88 @@ func _emit_ammo() -> void:
 # wolf.tscn connects this signal but the handler was missing (caused an engine error).
 func _on_pistol_animation_animation_finished(_anim_name: StringName) -> void:
 	pass
+
+
+# ==============================================================================
+# REVÓLVER .38
+# ==============================================================================
+
+func _setup_weapon_inputs() -> void:
+	# Cria as ações caso ainda não existam no Project Settings: TAB troca de arma, R recarrega.
+	if not InputMap.has_action("weapon_swap"):
+		InputMap.add_action("weapon_swap")
+		var k1 := InputEventKey.new()
+		k1.physical_keycode = KEY_TAB
+		InputMap.action_add_event("weapon_swap", k1)
+	if not InputMap.has_action("reload"):
+		InputMap.add_action("reload")
+		var k2 := InputEventKey.new()
+		k2.physical_keycode = KEY_R
+		InputMap.action_add_event("reload", k2)
+
+
+## Chamada pela fase da gaiola quando o jogador pega o revólver.
+func equip_revolver() -> void:
+	has_revolver = true
+	revolver_equipped = true
+	revolver_rounds = REVOLVER_CYLINDER
+	_reloading = false
+	reload_progress = 0.0
+	GameManager.set_meta("has_revolver", true)
+	_apply_weapon_visual()
+
+
+func _toggle_weapon() -> void:
+	revolver_equipped = not revolver_equipped
+	_reloading = false
+	reload_progress = 0.0
+	_apply_weapon_visual()
+
+
+func _apply_weapon_visual() -> void:
+	# Enquanto não há sprite próprio do .38, a arma ganha um tom de metal/latão.
+	arma_sprite.modulate = Color(1.0, 0.86, 0.55) if revolver_equipped else Color.WHITE
+
+
+func _revolver_logic(direction: Vector2) -> void:
+	if not revolver_equipped or is_dead:
+		return
+	if Input.is_action_just_pressed("reload") and not _reloading and revolver_rounds < REVOLVER_CYLINDER:
+		_start_reload()
+		return
+	if Input.is_action_just_pressed("shoot") and can_shoot and not is_dashing and not _reloading:
+		if revolver_rounds <= 0:
+			_start_reload()
+		else:
+			_fire_revolver(direction)
+
+
+func _start_reload() -> void:
+	_reloading = true
+	_reload_left = REVOLVER_RELOAD_TIME
+	reload_progress = 0.01
+
+
+func _finish_reload() -> void:
+	_reloading = false
+	reload_progress = 0.0
+	revolver_rounds = REVOLVER_CYLINDER
+
+
+func _fire_revolver(direction: Vector2) -> void:
+	can_shoot = false
+	revolver_rounds -= 1
+	GameManager.register_shot()
+	var b := REVOLVER_BULLET.new()
+	get_tree().current_scene.add_child(b)
+	b.global_position = ponto_tiro.global_position
+	b.damage = REVOLVER_DAMAGE
+	b.set_direction(direction)
+	ParticleFX.muzzle_flash(get_tree().current_scene, ponto_tiro.global_position, direction)
+	pistol_animation.play("fire")
+	pistol_animation.speed_scale = 4.0
+	# coice na câmera
+	camera.offset = -direction * 5.0
+	create_tween().tween_property(camera, "offset", Vector2.ZERO, 0.14)
+	await get_tree().create_timer(REVOLVER_FIRE_DELAY).timeout
+	can_shoot = true
