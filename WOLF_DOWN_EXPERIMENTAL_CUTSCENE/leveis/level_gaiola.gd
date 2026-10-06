@@ -25,6 +25,20 @@ const PLINTHS: Array[Vector2] = [Vector2(208.0, 262.0), Vector2(448.0, 330.0), V
 ## Cura 1 de vida e recarrega a munição da pistola a cada guardião derrotado.
 @export var reward_between_fights: bool = true
 
+## DIFICULDADE DOS GUARDIÕES (1.0 / 0 = como era antes).
+## Vida base x multiplicador (Bruto 10, Arremessador 14, Rei 20).
+@export var guardian_health_mult: float = 1.5
+## Dano extra no jogador: contato +1, investida +1 e cada estilhaço +1.
+@export var guardian_damage_bonus: int = 1
+## Velocidade de perseguição, investida e estilhaços.
+@export var guardian_speed_mult: float = 1.1
+## Frequência dos ataques (1.2 = 20% mais rápido).
+@export var guardian_attack_rate_mult: float = 1.2
+## Depois de derrotar os guardiões, todos voltam dos mortos (juntos) e só então a gaiola abre.
+@export var resurrect_guardians: bool = true
+## Multiplica a vida dos guardiões na volta (1.0 = vida cheia, igual à primeira luta).
+@export var resurrect_health_mult: float = 1.0
+
 @onready var player: Node2D = $wolf
 @onready var _cage: Node2D = $Cage
 @onready var _bars: Sprite2D = $Cage/Bars
@@ -42,6 +56,8 @@ var _overlay: Overlay
 var _msg_tween: Tween
 var _current: StoneDemon
 var _rev_rest_y: float = 0.0
+var _second_wave: bool = false
+var _second_wave_left: int = 0
 
 
 # ==============================================================================
@@ -112,6 +128,11 @@ func _build_statues() -> void:
 		var d := StoneDemon.new()
 		d.kind = demon_kinds[i]
 		d.bounds = FLOOR_RECT.grow(8.0)
+		d.health_mult = guardian_health_mult
+		d.damage_bonus = guardian_damage_bonus
+		d.speed_mult = guardian_speed_mult
+		d.attack_rate_mult = guardian_attack_rate_mult
+		d.keep_corpse = resurrect_guardians
 		d.position = _plinth_for(i, n)
 		d.z_index = 1
 		add_child(d)
@@ -163,6 +184,9 @@ func _run() -> void:
 			_say("GUARDIÃO %d DERROTADO" % (i + 1), 2.0)
 			await _wait(3.2)
 
+	if resurrect_guardians:
+		await _resurrection()
+
 	_say("O CADEADO FINAL SE PARTE...", 2.0)
 	await _wait(1.8)
 	_open_cage()
@@ -170,6 +194,57 @@ func _run() -> void:
 	_pickup_ready = true
 	_overlay.flash = 0.7
 	_say("O REVÓLVER .38 ESTÁ LIVRE!", 3.0)
+
+
+## Os guardiões voltam dos mortos TODOS JUNTOS; os cadeados se refazem e cada morte parte um de novo.
+func _resurrection() -> void:
+	_say("O ÚLTIMO GUARDIÃO CAI...", 2.0)
+	await _wait(2.6)
+	_say("MAS A MALDIÇÃO OS CHAMA DE VOLTA!", 2.8)
+	_overlay.flash = 1.0
+	await _wait(1.6)
+	ObjectiveManager.set_objective("Derrote os guardiões ressuscitados")
+
+	# cadeados se fecham de novo
+	_locks_broken = 0
+	_overlay.locks_broken = 0
+	for s in _locks:
+		if is_instance_valid(s):
+			ParticleFX.pickup(self, s.global_position)
+			s.show()
+
+	# cada guardião levanta do próprio pedestal
+	_second_wave = true
+	_second_wave_left = _statues.size()
+	_current = null
+	_overlay.boss_name = "GUARDIÕES RESSUSCITADOS   0/%d" % _statues.size()
+	_overlay.boss_ratio = 1.0
+	_overlay.boss_ghost = 1.0
+	_overlay.boss_on = true
+	_overlay.flash = 0.8
+	for i in _statues.size():
+		var d: StoneDemon = _statues[i]
+		d.position = _plinth_for(i, _statues.size())
+		d.died.connect(_on_resurrected_died, CONNECT_ONE_SHOT)
+		d.revive(resurrect_health_mult)
+
+	# espera os três morrerem de vez (o contador cai em _on_resurrected_died)
+	while _second_wave_left > 0:
+		await get_tree().process_frame
+
+	_second_wave = false
+	_overlay.boss_on = false
+	_overlay.flash = 0.6
+	await _wait(1.0)
+
+
+func _on_resurrected_died(_d: StoneDemon) -> void:
+	_second_wave_left -= 1
+	var total: int = _statues.size()
+	_overlay.boss_name = "GUARDIÕES RESSUSCITADOS   %d/%d" % [total - _second_wave_left, total]
+	_break_lock(mini(_locks_broken, total - 1))
+	if reward_between_fights and _second_wave_left > 0:
+		_give_reward()
 
 
 func _break_lock(i: int) -> void:
@@ -229,7 +304,16 @@ func _process(delta: float) -> void:
 	_t += delta
 
 	# barra do guardião ativo
-	if is_instance_valid(_current) and _overlay.boss_on:
+	if _second_wave:
+		# barra única com a vida somada dos três guardiões ressuscitados
+		var cur: int = 0
+		var mx: int = 0
+		for st in _statues:
+			if is_instance_valid(st):
+				cur += maxi(st.health, 0)
+				mx += st.max_health
+		_overlay.boss_ratio = clampf(float(cur) / float(maxi(mx, 1)), 0.0, 1.0)
+	elif is_instance_valid(_current) and _overlay.boss_on:
 		_overlay.boss_ratio = clampf(float(_current.health) / float(_current.max_health), 0.0, 1.0)
 	_overlay.flash = maxf(_overlay.flash - delta * 2.0, 0.0)
 

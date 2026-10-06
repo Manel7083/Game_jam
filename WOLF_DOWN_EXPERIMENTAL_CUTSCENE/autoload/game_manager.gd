@@ -84,6 +84,9 @@ func reset_run() -> void:
 	player_hp = STARTING_MAX_HP
 	score_life_rewards_claimed = 0
 	weapon_name = "PISTOL"
+	# O .38 só é ganho na fase da gaiola: numa nova partida o lobo volta a começar só com a pistola.
+	if has_meta("has_revolver"):
+		remove_meta("has_revolver")
 	_snapshot = {}
 
 

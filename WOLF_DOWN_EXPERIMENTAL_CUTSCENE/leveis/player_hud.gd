@@ -11,7 +11,7 @@ extends Control
 const FONT: FontFile = preload("res://fonts/MountainsofChristmas-Bold.ttf")
 const DESIGN_H: float = 720.0
 
-@export var ui_scale_mult: float = 1.0
+@export var ui_scale_mult: float = 0.85
 @export var margin: Vector2 = Vector2(28.0, 22.0)
 @export var anchor_bottom_left: bool = true   # true = canto inferior esquerdo (onde ficava a HUD antiga)
 const HUD_H: float = 164.0

@@ -27,6 +27,17 @@ const FRAME := 32
 
 @export var kind: int = 0
 @export var health_override: int = 0
+## DIFICULDADE (o level preenche; 1.0 / 0 = valores originais).
+## Multiplica a vida base do guardião.
+@export var health_mult: float = 1.0
+## Dano extra no jogador (contato, investida e estilhaços).
+@export var damage_bonus: int = 0
+## Multiplica a velocidade de perseguição, da investida e dos estilhaços.
+@export var speed_mult: float = 1.0
+## Multiplica a frequência dos ataques (1.25 = ataca 25% mais rápido).
+@export var attack_rate_mult: float = 1.0
+## true = ao morrer o corpo continua na cena (some visualmente) para poder voltar com revive().
+@export var keep_corpse: bool = false
 ## Limites da arena (estilhaços somem fora daqui). O level preenche.
 @export var bounds: Rect2 = Rect2(-100000.0, -100000.0, 200000.0, 200000.0)
 
@@ -57,7 +68,7 @@ var _aura: PointLight2D
 func _ready() -> void:
 	kind = clampi(kind, 0, 2)
 	display_name = NAMES[kind]
-	max_health = health_override if health_override > 0 else HEALTH[kind]
+	max_health = health_override if health_override > 0 else maxi(1, roundi(float(HEALTH[kind]) * health_mult))
 	health = max_health
 	_k = SIZE_K[kind]
 	_spr = 2.0 * _k
@@ -119,6 +130,29 @@ func awaken() -> void:
 	woke.emit()
 
 
+## Volta dos mortos: levanta de novo (acorda como no começo: ~1.6 s imóvel e invulnerável) e a partir
+## daí morre de vez. `health_factor` multiplica a vida da volta (1.0 = vida cheia, igual à primeira vez).
+func revive(health_factor: float = 1.0) -> void:
+	if state != State.DEAD:
+		return
+	keep_corpse = false
+	max_health = maxi(1, roundi(float(max_health) * health_factor))
+	health = max_health
+	velocity = Vector2.ZERO
+	_flash = 0.0
+	_contact_cd = 0.0
+	_bits.clear()
+	var shape := get_node_or_null("BodyShape") as CollisionShape2D
+	if shape:
+		shape.set_deferred("disabled", false)
+	state = State.WAKING
+	_state_time = 0.0
+	_shake = 1.0
+	_spawn_bits(22, 1.2)
+	add_to_group("enemies")
+	woke.emit()
+
+
 # ==============================================================================
 # COMPORTAMENTO
 # ==============================================================================
@@ -156,7 +190,7 @@ func _physics_process(delta: float) -> void:
 				_shake = 0.0
 				_begin_attack()
 		State.CHARGE:
-			var cspeed: float = 270.0 if kind == 0 else 330.0
+			var cspeed: float = (270.0 if kind == 0 else 330.0) * speed_mult
 			velocity = _charge_dir * cspeed
 			if _state_time >= 0.5 or (_state_time > 0.12 and get_slide_collision_count() > 0):
 				_end_charge()
@@ -203,7 +237,7 @@ func _chase(delta: float, pl: Node2D) -> void:
 	var dir: Vector2 = to_p / maxf(dist, 0.001)
 	if absf(to_p.x) > 4.0:
 		_face = signf(to_p.x)
-	var spd: float = SPEED[kind]
+	var spd: float = SPEED[kind] * speed_mult
 	_attack_cd -= delta
 
 	match kind:
@@ -240,7 +274,7 @@ func _begin_attack() -> void:
 	else:
 		_fire_volley()
 		_recover_time = 0.55
-		_attack_cd = ATTACK_CD[kind]
+		_attack_cd = ATTACK_CD[kind] / attack_rate_mult
 		_enter(State.RECOVER)
 
 
@@ -249,7 +283,7 @@ func _end_charge() -> void:
 	if kind == 2:
 		_fire_ring(10)
 	_recover_time = 0.9
-	_attack_cd = ATTACK_CD[kind]
+	_attack_cd = ATTACK_CD[kind] / attack_rate_mult
 	_enter(State.RECOVER)
 
 
@@ -259,7 +293,7 @@ func _check_contact(pl: Node2D) -> void:
 	if state == State.WAKING:
 		return
 	if hit_center().distance_to(pl.global_position) < 9.0 * _spr + 14.0:
-		pl.update_health(2 if state == State.CHARGE else 1)
+		pl.update_health((2 if state == State.CHARGE else 1) + damage_bonus)
 		_contact_cd = 0.9
 
 
@@ -286,7 +320,8 @@ func _spawn_shard(dir: Vector2) -> void:
 	var s := Shard.new()
 	s.dir = dir
 	s.bounds = bounds
-	s.speed = 170.0 if kind == 1 else 200.0
+	s.speed = (170.0 if kind == 1 else 200.0) * speed_mult
+	s.damage = 1 + damage_bonus
 	get_parent().add_child(s)
 	s.global_position = hit_center() + dir * 20.0
 
@@ -314,6 +349,8 @@ func _die() -> void:
 		shape.set_deferred("disabled", true)
 	_spawn_bits(26, 2.6)
 	died.emit(self)
+	if keep_corpse:
+		return
 	await get_tree().create_timer(3.2).timeout
 	queue_free()
 
@@ -434,6 +471,7 @@ func _draw() -> void:
 class Shard extends Node2D:
 	var dir: Vector2 = Vector2.RIGHT
 	var speed: float = 190.0
+	var damage: int = 1
 	var bounds: Rect2 = Rect2()
 	var life: float = 4.0
 
@@ -443,7 +481,7 @@ class Shard extends Node2D:
 		life -= delta
 		var pl = Global.Player
 		if is_instance_valid(pl) and not pl.is_dead and global_position.distance_to(pl.global_position) < 15.0:
-			pl.update_health(1)
+			pl.update_health(damage)
 			queue_free()
 			return
 		if life <= 0.0 or (bounds.size.x > 0.0 and not bounds.has_point(global_position)):

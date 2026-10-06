@@ -3,6 +3,7 @@ extends CanvasLayer
 @onready var animation = $animation
 var scene_path: String = ""
 var _busy := false
+var _pending_path: String = ""
 
 
 func _ready() -> void:
@@ -17,6 +18,10 @@ func _ready() -> void:
 ## Fades out, switches to `path`, fades back in. Ignored while a transition is running.
 func change_scene(path: String) -> void:
 	scene_path = path
+	if _busy:
+		# Já existe um fade rodando (ex.: pular a cutscene logo ao entrar). Guarda o pedido e executa ao terminar.
+		_pending_path = path
+		return
 	fade_in()
 
 
@@ -40,3 +45,7 @@ func _on_animation_animation_finished(anim_name: String) -> void:
 		animation.play("fade_out")
 	elif anim_name == "fade_out":
 		_busy = false
+		if _pending_path != "":
+			var next_path := _pending_path
+			_pending_path = ""
+			change_scene(next_path)

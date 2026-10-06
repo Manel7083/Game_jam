@@ -39,7 +39,7 @@ var regen_speed: float = 60.0
 
 var last_shot_time: float = 0.0
 
-# DASH (Shift) - curto, com cooldown e i-frames
+# DASH (Shift no teclado / X no controle) - curto, com cooldown e i-frames
 const DASH_SPEED := 320.0      # velocidade durante o dash (andar normal = 100)
 const DASH_DURATION := 0.15    # ~48px de distância
 const DASH_COOLDOWN := 0.8     # contado a partir do início do dash
@@ -57,6 +57,15 @@ const REVOLVER_DAMAGE := 4
 const REVOLVER_FIRE_DELAY := 0.38
 const REVOLVER_RELOAD_TIME := 1.3
 var has_revolver: bool = false
+
+# SOM DOS TIROS: pool de players não posicionais (o som não fica preso na bala nem é cortado).
+const PISTOL_SFX_PATH := "res://bullet/pistol_shot.wav"
+const REVOLVER_SFX_PATH := "res://bullet/gunshot_38.wav"
+const SHOT_POOL_SIZE := 6
+var _sfx_pistol: AudioStream
+var _sfx_revolver: AudioStream
+var _sfx_pool: Array[AudioStreamPlayer] = []
+var _sfx_index: int = 0
 var revolver_equipped: bool = false
 var revolver_rounds: int = REVOLVER_CYLINDER
 var reload_progress: float = 0.0   # 0 = sem recarga; 0..1 durante a recarga (lido pela HUD)
@@ -75,6 +84,7 @@ func _ready():
 	Global.Player = self
 	_setup_dash_input()
 	_setup_weapon_inputs()
+	_setup_shot_audio()
 	virtual_mouse_pos = global_position
 	can_attack = true
 	# HP now persists across levels through GameManager instead of resetting to 5.
@@ -180,6 +190,7 @@ func _physics_process(delta: float) -> void:
 	
 	if not revolver_equipped and Input.is_action_pressed("shoot") and can_shoot and not is_dashing and ammo >= ammo_cost:
 		_shoot(final_dir)
+		_play_shot(_sfx_pistol, -3.0, 1.0)
 		ParticleFX.muzzle_flash(get_tree().current_scene, ponto_tiro.global_position, final_dir)
 		pistol_animation.play("fire")
 		pistol_animation.speed_scale = 6.8
@@ -230,12 +241,34 @@ func _update_eye_fx() -> void:
 
 
 func _setup_dash_input() -> void:
-	# Cria a ação "dash" no Shift caso ainda não exista no Project Settings.
+	# DASH:
+	# Teclado: SHIFT
+	# Controle: X
 	if not InputMap.has_action("dash"):
 		InputMap.add_action("dash")
-		var key := InputEventKey.new()
-		key.physical_keycode = KEY_SHIFT
-		InputMap.action_add_event("dash", key)
+
+	_add_key_input_if_missing("dash", KEY_SHIFT)
+	_add_joypad_button_if_missing("dash", JOY_BUTTON_X)
+
+
+func _add_key_input_if_missing(action: StringName, keycode: Key) -> void:
+	for event in InputMap.action_get_events(action):
+		if event is InputEventKey and event.physical_keycode == keycode:
+			return
+
+	var key := InputEventKey.new()
+	key.physical_keycode = keycode
+	InputMap.action_add_event(action, key)
+
+
+func _add_joypad_button_if_missing(action: StringName, button: JoyButton) -> void:
+	for event in InputMap.action_get_events(action):
+		if event is InputEventJoypadButton and event.button_index == button:
+			return
+
+	var joy_button := InputEventJoypadButton.new()
+	joy_button.button_index = button
+	InputMap.action_add_event(action, joy_button)
 
 
 func _start_dash() -> void:
@@ -311,6 +344,31 @@ func attack_handler() -> void:
 		animation.play("attack")
 		#son_attack.play()
 
+
+
+func _setup_shot_audio() -> void:
+	# Pistola: som novo (pistol_shot.wav). Se ele ainda não foi importado pelo Godot, usa o .38 como reserva.
+	_sfx_revolver = load(REVOLVER_SFX_PATH)
+	_sfx_pistol = load(PISTOL_SFX_PATH) if ResourceLoader.exists(PISTOL_SFX_PATH) else _sfx_revolver
+	# Garante que o tiro toca UMA vez (o .wav estava importado com loop e repetia enquanto a bala voava).
+	for s in [_sfx_pistol, _sfx_revolver]:
+		if s is AudioStreamWAV:
+			s.loop_mode = AudioStreamWAV.LOOP_DISABLED
+	for i in SHOT_POOL_SIZE:
+		var p := AudioStreamPlayer.new()
+		add_child(p)
+		_sfx_pool.append(p)
+
+
+func _play_shot(stream: AudioStream, volume_db: float, pitch: float) -> void:
+	if stream == null or _sfx_pool.is_empty():
+		return
+	var p: AudioStreamPlayer = _sfx_pool[_sfx_index]
+	_sfx_index = (_sfx_index + 1) % _sfx_pool.size()
+	p.stream = stream
+	p.volume_db = volume_db
+	p.pitch_scale = pitch * randf_range(0.96, 1.04)
+	p.play()
 
 
 func _on_animation_animation_finished(anim_name):
@@ -391,17 +449,21 @@ func _on_pistol_animation_animation_finished(_anim_name: StringName) -> void:
 # ==============================================================================
 
 func _setup_weapon_inputs() -> void:
-	# Cria as ações caso ainda não existam no Project Settings: TAB troca de arma, R recarrega.
+	# Troca de arma:
+	# Teclado: TAB
+	# Controle: R1 / RB
 	if not InputMap.has_action("weapon_swap"):
 		InputMap.add_action("weapon_swap")
-		var k1 := InputEventKey.new()
-		k1.physical_keycode = KEY_TAB
-		InputMap.action_add_event("weapon_swap", k1)
+
+	_add_key_input_if_missing("weapon_swap", KEY_TAB)
+	_add_joypad_button_if_missing("weapon_swap", JOY_BUTTON_LEFT_SHOULDER)
+
+	# Recarga:
+	# Teclado: R
 	if not InputMap.has_action("reload"):
 		InputMap.add_action("reload")
-		var k2 := InputEventKey.new()
-		k2.physical_keycode = KEY_R
-		InputMap.action_add_event("reload", k2)
+
+	_add_key_input_if_missing("reload", KEY_R)
 
 
 ## Chamada pela fase da gaiola quando o jogador pega o revólver.
@@ -461,6 +523,7 @@ func _fire_revolver(direction: Vector2) -> void:
 	b.global_position = ponto_tiro.global_position
 	b.damage = REVOLVER_DAMAGE
 	b.set_direction(direction)
+	_play_shot(_sfx_revolver, -4.0, 0.65)
 	ParticleFX.muzzle_flash(get_tree().current_scene, ponto_tiro.global_position, direction)
 	pistol_animation.play("fire")
 	pistol_animation.speed_scale = 4.0
