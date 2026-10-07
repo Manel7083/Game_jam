@@ -2,7 +2,7 @@ extends CanvasLayer
 ## Pause overlay. Pauses the whole tree; this node keeps running (process_mode ALWAYS).
 ## Layout: menu à esquerda; ao fundo, o caçador andando sob a chuva (rain_scene.gd).
 
-const RAIN_SCENE: Script = preload("res://ui/rain_scene.gd")
+const RAIN_SCENE_PATH := "res://ui/rain_scene.gd"
 
 var _menu_root: Control
 var _scene: Control
@@ -15,7 +15,13 @@ func _ready() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	get_tree().paused = true
 
-	_scene = RAIN_SCENE.new()
+	# Fundo da chuva é opcional: se o script não existir, o menu abre mesmo assim.
+	if ResourceLoader.exists(RAIN_SCENE_PATH):
+		_scene = (load(RAIN_SCENE_PATH) as Script).new()
+	else:
+		push_warning("pause_menu: %s não encontrado, abrindo sem o fundo." % RAIN_SCENE_PATH)
+		_scene = Control.new()
+		_scene.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_scene)
 
 	# Menu centralizado na metade esquerda da tela (o caçador anda na direita)

@@ -8,6 +8,9 @@ extends "res://leveis/level_base.gd"
 ## Folga (px) para dentro da borda, para o coice/tremor da câmera (offset) não vazar para o void.
 const CAMERA_LIMIT_MARGIN: int = 6
 
+## Cutscene de abertura (caçador -> castelo -> monstros -> transformação -> tiro para cima).
+const INTRO_CUTSCENE = preload("res://leveis/level1_intro_cutscene_v3.gd")
+
 var _camera_limit_rect: Rect2 = Rect2()
 var _camera_base_zoom: Vector2 = Vector2(2.6, 2.6)
 
@@ -15,6 +18,32 @@ var _camera_base_zoom: Vector2 = Vector2(2.6, 2.6)
 func _ready() -> void:
 	super._ready()
 	_limit_camera()
+	# Este script também é usado pelo level_2: a cutscene só toca na fase 1.
+	if _is_level_1():
+		await _play_intro_cutscene()
+
+
+func _is_level_1() -> bool:
+	return scene_file_path.get_file() == "level_1.tscn" or String(name) == "level_1"
+
+
+## Toca a cutscene por cima da fase (CanvasLayer) com o jogo pausado, e libera quando ela termina.
+func _play_intro_cutscene() -> void:
+	var tree := get_tree()
+	tree.paused = true
+	var layer := CanvasLayer.new()
+	layer.layer = 100
+	layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(layer)
+
+	var cine = INTRO_CUTSCENE.new()
+	layer.add_child(cine)
+	await cine.finished
+
+	if is_instance_valid(layer):
+		layer.queue_free()
+	if is_inside_tree():
+		tree.paused = false
 
 
 func setup_objectives() -> void:

@@ -11,7 +11,7 @@ extends Level1AftermathCinematic
 ##    efeitos de transformação: pelos nascendo, olhos amarelos, chapéu caindo).
 ##  - UIKit / InteractiveButton / ControlsPanel (ui/): botões e painel de controles de sempre.
 ##  - GameManager.start_game(), res://audio/musica_halloween.wav, res://audio/thunder.wav,
-##    fonte MountainsofChristmas e res://menu/tiulo_jogo.png.
+##    fonte MountainsofChristmas (o título agora é desenhado por código, igual ao da cutscene).
 ## NOVOS: audio/menu_transform.wav e audio/menu_howl.wav (gerados por audio/gerar_audio_menu.py).
 ##
 ## Qualquer tecla / clique pula a cutscene.
@@ -21,7 +21,9 @@ const MUSIC_PITCH := 0.85          # a cutscene de abertura usa 0.83; 1.0 = velo
 const THUNDER_FILE := "res://audio/thunder.wav"
 const TRANSFORM_FILE := "res://audio/menu_transform.wav"
 const HOWL_FILE := "res://audio/menu_howl.wav"
-const TITLE_FILE := "res://menu/tiulo_jogo.png"
+
+const TITLE_LINE_1 := "THE LEGEND OF DRACULA"
+const TITLE_LINE_2 := "FALLS IN THE MOONLIGHT"
 
 # ---- linha do tempo (segundos) ----
 const T_FADE_IN := 1.6      # sai do preto
@@ -33,10 +35,14 @@ const T_MENU := 8.6         # título, música e botões entram
 
 # [instante, força, branco(1)/vermelho(0), decaimento]
 const FLASHES: Array = [
-	[2.6, 0.35, 0, 0.15], [3.4, 0.40, 0, 0.15], [4.0, 0.50, 0, 0.15], [4.4, 0.55, 0, 0.15],
+	[2.6, 0.35, 0, 0.15], [3.0, 0.25, 0, 0.12], [3.4, 0.40, 0, 0.15], [3.7, 0.30, 0, 0.12],
+	[4.0, 0.50, 0, 0.15], [4.2, 0.35, 0, 0.12], [4.4, 0.55, 0, 0.15],
 	[4.7, 0.60, 1, 0.15], [4.9, 0.70, 1, 0.15], [5.0, 1.00, 1, 0.55],
 	[8.6, 0.30, 0, 0.30],
 ]
+
+# Raios no céu durante a transformação (instante de cada clarão frio).
+const BOLT_TIMES: Array = [2.6, 3.4, 4.0, 4.4, 4.7, 4.9, 5.0]
 
 const BUTTON_LABELS: Array[String] = ["START", "CONTROL", "QUIT GAME"]
 
@@ -47,7 +53,8 @@ var _ev: Dictionary = {}
 var _sfx_transform: AudioStreamPlayer
 var _sfx_howl: AudioStreamPlayer
 var _sfx_thunder: AudioStreamPlayer
-var _title_node: Control
+var _title_start: float = -1.0      # instante (em _total) em que o título começou a entrar
+var _lean: float = 0.0              # curvatura do corpo do caçador (usada por _deform)
 var _menu_box: VBoxContainer
 var _menu_buttons: Array[Button] = []
 var _skip_hint: Label
@@ -170,22 +177,7 @@ func _start_music() -> void:
 # ----------------------------------------------------------------------------
 
 func _build_menu_ui() -> void:
-	# Título: reaproveita res://menu/tiulo_jogo.png; se faltar, usa texto com a fonte do jogo.
-	if ResourceLoader.exists(TITLE_FILE):
-		var tex_rect := TextureRect.new()
-		tex_rect.texture = load(TITLE_FILE)
-		tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		_title_node = tex_rect
-	else:
-		_title_node = UIKit.make_label("A LENDA DO LOBISOMEN", 84, Color(1.0, 0.35, 0.2))
-	_title_node.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_title_node.anchor_left = 0.03
-	_title_node.anchor_top = 0.03
-	_title_node.anchor_right = 0.50
-	_title_node.anchor_bottom = 0.40
-	_title_node.modulate.a = 0.0
-	add_child(_title_node)
+	# O título é desenhado em _draw() (_draw_title), com a mesma fonte do logotipo da cutscene.
 
 	# Botões (na esquerda, para não cobrir o lobo e a lua).
 	_menu_box = VBoxContainer.new()
@@ -267,16 +259,8 @@ func _show_menu() -> void:
 	_menu_shown = true
 	_start_music()
 
-	# Título cai com impacto.
-	_title_node.pivot_offset = _title_node.size * 0.5
-	_title_node.scale = Vector2(1.35, 1.35)
-	var tt := create_tween().set_parallel(true)
-	tt.tween_property(_title_node, "modulate:a", 1.0, 0.5)
-	tt.tween_property(_title_node, "scale", Vector2.ONE, 0.7).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	var idle := create_tween().set_loops()   # título "respirando"
-	idle.tween_interval(0.9)
-	idle.tween_property(_title_node, "scale", Vector2(1.02, 1.02), 1.6).set_trans(Tween.TRANS_SINE)
-	idle.tween_property(_title_node, "scale", Vector2.ONE, 1.6).set_trans(Tween.TRANS_SINE)
+	# O título entra (fade + zoom + brilho) dentro de _draw_title(), a partir deste instante.
+	_title_start = _total
 
 	# Botões entram um por um, abrindo da esquerda.
 	var delay: float = 0.55
@@ -378,21 +362,38 @@ func _draw() -> void:
 	var rise: float = _smooth(t / T_SWAP)
 	var moon := Vector2(cx + 220.0 + shift, lerpf(520.0, 360.0, rise))
 	_bg(moon, lerpf(170.0, 250.0, rise), false, true)
-	# A lua fica vermelha/ameaçadora enquanto ele se transforma.
-	_glow(moon, 1300.0, Color(0.95, 0.12, 0.10, 0.16 * morph * (1.0 - 0.6 * after)))
+
+	# Batimento do coração: acelera e fica mais forte conforme a maldição avança.
+	var beat_rate: float = lerpf(2.2, 7.5, morph)
+	var beat: float = pow(maxf(sin(t * beat_rate * 2.0), 0.0), 6.0) * morph * (1.0 - after)
+
+	# A lua fica vermelha/ameaçadora e pulsa junto com o coração.
+	_glow(moon, 1300.0, Color(0.95, 0.12, 0.10, (0.16 + 0.12 * beat) * morph * (1.0 - 0.6 * after)))
+	_glow(moon, 420.0, Color(1.0, 0.25, 0.15, 0.22 * morph * (0.6 + 0.4 * beat) * (1.0 - after)))
+
+	_draw_sky_bolts(t, cx + shift)
 
 	var base := Vector2(cx + 40.0 + shift, 905.0)
 	if t < T_SWAP:
-		_draw_hunter(Vector2(base.x, base.y - 25.0), 1.8, morph)
+		_draw_hunter(Vector2(base.x, base.y - 25.0), 1.8, morph, beat)
 	else:
 		var sc: float = lerpf(1.08, 0.9, _smooth((t - T_SWAP) / 0.6))
 		_wolf_howl(base, sc, t, howl)   # herdado
 		_howl_rings(base, sc, howl)
+		_draw_shockwaves(base, t - T_SWAP)
 	_draw_mist(935.0, 0.05)
 	_draw_embers(18)
 
 	draw_set_transform_matrix(Transform2D.IDENTITY)
 	draw_texture_rect(_vignette_tex, Rect2(Vector2.ZERO, screen), false, Color.WHITE)
+
+	# Vinheta vermelha pulsando no ritmo do coração.
+	var red_a: float = (0.05 + 0.20 * beat) * morph * (1.0 - after)
+	if red_a > 0.005:
+		draw_rect(Rect2(Vector2.ZERO, screen), Color(0.6, 0.0, 0.02, red_a))
+
+	# Título (logotipo desenhado por código): entra junto com o menu.
+	_draw_title(screen)
 
 	# Grão de filme.
 	var seed_v: float = floorf(t * 24.0)
@@ -433,16 +434,179 @@ func _howl_rings(base: Vector2, sc: float, howl: float) -> void:
 		var r: float = (30.0 + ph * 380.0) * sc
 		draw_arc(c, r, tilt - 0.55, tilt + 0.55, 28, Color(0.85, 0.82, 1.0, 0.45 * (1.0 - ph) * howl), 4.0 * sc + 2.0, true)
 
+# ----------------------------------------------------------------------------
+# Título: logotipo desenhado por código (mesma fonte, cor, contorno e brilho do logotipo
+# da cutscene). Entra junto com o menu: fade + zoom + clarão de impacto + "respiração".
+# ----------------------------------------------------------------------------
+
+func _draw_title(screen: Vector2) -> void:
+	if _title_start < 0.0:
+		return
+	var since: float = _total - _title_start
+	var t: float = _smooth(since / 1.2)
+	if t <= 0.0:
+		return
+
+	# Espaço de design (altura DESIGN_H), sem o tremor de câmera da cena.
+	draw_set_transform_matrix(Transform2D(0.0, Vector2(_scale, _scale), 0.0, Vector2.ZERO))
+	var cx: float = _vw * 0.5
+	var scale_in: float = 1.0 + (1.0 - t) * 0.08
+	var breathe: float = 1.0 + 0.012 * sin(since * 1.6)
+	var impact: float = exp(-since / 0.35)
+
+	# Tamanho base 130; reduz sozinho se a linha mais larga não couber na tela.
+	var fs_base: float = 130.0
+	var w1: float = FONT_BOLD.get_string_size(TITLE_LINE_1, HORIZONTAL_ALIGNMENT_LEFT, -1, int(fs_base)).x
+	var w2: float = FONT_BOLD.get_string_size(TITLE_LINE_2, HORIZONTAL_ALIGNMENT_LEFT, -1, int(fs_base)).x
+	var widest: float = maxf(w1, w2)
+	var max_w: float = _vw * 0.86
+	if widest > max_w:
+		fs_base *= max_w / widest
+		widest = max_w
+	var fs: int = int(fs_base * scale_in * breathe)
+	var outline: int = maxi(int(18.0 * fs_base / 130.0), 4)
+
+	var y1: float = 60.0 + fs_base * 1.05      # baseline da 1ª linha
+	var y2: float = y1 + fs_base * 0.78        # baseline da 2ª linha
+	var dec_y: float = y2 + fs_base * 0.10     # linha decorativa
+
+	# Brilho vermelho atrás do logotipo.
+	_glow_ellipse(Vector2(cx, (y1 + y2) * 0.5 - fs_base * 0.2), widest * 0.62, fs_base * 1.5, Color(1.0, 0.05, 0.10, (0.34 + 0.12 * impact) * t))
+
+	var fill := Color(1.0, 0.24, 0.18, t)
+	var edge := Color(0.12, 0.0, 0.02, t)
+	draw_string_outline(FONT_BOLD, Vector2(0.0, y1), TITLE_LINE_1, HORIZONTAL_ALIGNMENT_CENTER, _vw, fs, outline, edge)
+	draw_string(FONT_BOLD, Vector2(0.0, y1), TITLE_LINE_1, HORIZONTAL_ALIGNMENT_CENTER, _vw, fs, fill)
+	draw_string_outline(FONT_BOLD, Vector2(0.0, y2), TITLE_LINE_2, HORIZONTAL_ALIGNMENT_CENTER, _vw, fs, outline, edge)
+	draw_string(FONT_BOLD, Vector2(0.0, y2), TITLE_LINE_2, HORIZONTAL_ALIGNMENT_CENTER, _vw, fs, fill)
+
+	# Clarão quente na hora do impacto.
+	if impact > 0.05:
+		var hot := Color(1.0, 0.85, 0.6, 0.45 * impact * t)
+		draw_string(FONT_BOLD, Vector2(0.0, y1), TITLE_LINE_1, HORIZONTAL_ALIGNMENT_CENTER, _vw, fs, hot)
+		draw_string(FONT_BOLD, Vector2(0.0, y2), TITLE_LINE_2, HORIZONTAL_ALIGNMENT_CENTER, _vw, fs, hot)
+
+	# Linhas decorativas e losango.
+	var dc := Color(1.0, 0.5, 0.45, 0.8 * t)
+	draw_line(Vector2(cx - 260.0, dec_y), Vector2(cx - 24.0, dec_y), dc, 3.0, true)
+	draw_line(Vector2(cx + 24.0, dec_y), Vector2(cx + 260.0, dec_y), dc, 3.0, true)
+	draw_colored_polygon(PackedVector2Array([
+		Vector2(cx, dec_y - 10.0),
+		Vector2(cx + 10.0, dec_y),
+		Vector2(cx, dec_y + 10.0),
+		Vector2(cx - 10.0, dec_y),
+	]), Color(1.0, 0.5, 0.45, 0.9 * t))
+
+	draw_set_transform_matrix(Transform2D.IDENTITY)
+
+
+# ----------------------------------------------------------------------------
+# Efeitos da transformação
+# ----------------------------------------------------------------------------
+
+## Raios cortando o céu a cada clarão frio (BOLT_TIMES), até a virada.
+func _draw_sky_bolts(t: float, cx: float) -> void:
+	if t > T_SWAP + 0.3:
+		return
+	for i in BOLT_TIMES.size():
+		var dt: float = t - float(BOLT_TIMES[i])
+		if dt < 0.0 or dt > 0.22:
+			continue
+		var a: float = 1.0 - dt / 0.22
+		var sd: float = float(BOLT_TIMES[i]) * 13.0 + float(i)
+		var px: float = cx - 520.0 + _hsh(sd) * 1000.0
+		var y: float = -20.0
+		var pts := PackedVector2Array()
+		while y < 740.0:
+			pts.append(Vector2(px, y))
+			y += 55.0 + _hsh(sd + y) * 40.0
+			px += (_hsh(sd * 1.7 + y) - 0.5) * 120.0
+		pts.append(Vector2(px, 760.0))
+		draw_polyline(pts, Color(0.55, 0.65, 1.0, 0.25 * a), 16.0, true)
+		draw_polyline(pts, Color(0.92, 0.95, 1.0, 0.9 * a), 4.0, true)
+		if pts.size() > 3:
+			var q: Vector2 = pts[2]
+			var br := PackedVector2Array([
+				q,
+				q + Vector2((_hsh(sd + 5.0) - 0.5) * 260.0, 120.0),
+				q + Vector2((_hsh(sd + 8.0) - 0.5) * 340.0, 260.0),
+			])
+			draw_polyline(br, Color(0.92, 0.95, 1.0, 0.6 * a), 2.5, true)
+		_glow(Vector2(px, 760.0), 160.0, Color(0.7, 0.8, 1.0, 0.35 * a))
+
+
+## Onda de choque + poeira + faíscas quando o caçador vira lobo.
+func _draw_shockwaves(base: Vector2, dt: float) -> void:
+	if dt > 1.6:
+		return
+	var center: Vector2 = base + Vector2(0.0, -300.0)
+	for i in 3:
+		var d: float = dt - float(i) * 0.14
+		if d <= 0.0:
+			continue
+		var a: float = clampf(1.0 - d / 1.3, 0.0, 1.0)
+		var col := Color(1.0, 0.45 + 0.2 * float(i), 0.3, 0.55 * a)
+		if i == 2:
+			col = Color(1.0, 0.95, 0.9, 0.4 * a)
+		draw_arc(center, d * 1500.0, 0.0, TAU, 96, col, 10.0 * a + 2.0, true)
+
+	var fade: float = clampf(1.0 - dt / 1.2, 0.0, 1.0)
+	_glow_ellipse(base + Vector2(0.0, 20.0), 120.0 + dt * 700.0, 30.0 + dt * 50.0, Color(0.8, 0.2, 0.15, 0.35 * fade))
+	if fade <= 0.0:
+		return
+	for i in 30:
+		var fi: float = float(i)
+		var ang: float = -PI * (0.1 + 0.8 * _hsh(fi * 2.7))
+		var sp: float = 500.0 + 900.0 * _hsh(fi * 5.3)
+		var pos: Vector2 = center + Vector2.from_angle(ang) * (sp * dt) + Vector2(0.0, 400.0 * dt * dt)
+		draw_circle(pos, 2.0 + 3.0 * _hsh(fi * 9.1), Color(1.0, 0.6, 0.25, fade))
+
+
+## Chão rachando em brasa, aura e partículas subindo ao redor do caçador.
+func _draw_transform_fx(base: Vector2, k: float, morph: float) -> void:
+	if morph < 0.05:
+		return
+	var o: Vector2 = base + Vector2(10.0, 30.0) * k
+	_glow_ellipse(o, (150.0 + 160.0 * morph) * k, 26.0 * k, Color(1.0, 0.25, 0.08, 0.30 * morph))
+
+	for i in 9:
+		var fi: float = float(i)
+		var dx: float = (fi / 8.0 - 0.5) * 2.0
+		var ln: float = (120.0 + 220.0 * _hsh(fi * 4.3)) * morph * k
+		var end: Vector2 = o + Vector2(dx * ln, (_hsh(fi * 8.1) - 0.3) * 30.0 * k)
+		var fl: float = 0.5 + 0.5 * sin(_total * 9.0 + fi)
+		draw_line(o, end, Color(1.0, 0.30, 0.08, 0.20 * morph * fl), 10.0 * k, true)
+		draw_line(o, end, Color(1.0, 0.55, 0.15, 0.80 * morph * fl), 3.0 * k, true)
+
+	for i in 44:
+		var fi: float = float(i)
+		var ph: float = fposmod(_total * (0.35 + 0.4 * _hsh(fi * 1.9)) + _hsh(fi * 6.1), 1.0)
+		var px: float = (_hsh(fi * 2.3) - 0.5) * 300.0 + sin(_total * 2.0 + fi) * 20.0
+		var pp: Vector2 = o + Vector2(px, -ph * 520.0) * k
+		var rad: float = (1.5 + 3.5 * _hsh(fi * 3.7)) * (1.0 - ph * 0.5)
+		draw_circle(pp, rad, Color(1.0, 0.45 + 0.4 * (1.0 - ph), 0.15, (1.0 - ph) * 0.9 * morph))
+
 
 # ----------------------------------------------------------------------------
 # O caçador (silhueta de OpeningCinematic._hunter) com efeitos de transformação.
-# morph: 0 = homem, 1 = prestes a virar lobo.
+# morph: 0 = homem, 1 = prestes a virar lobo.  beat: pulso do coração (0..1).
+# O corpo se curva para a frente (_lean) conforme a transformação avança.
 # ----------------------------------------------------------------------------
+
+## Curva o corpo: quanto mais alto o ponto, mais ele é empurrado para a frente (e um pouco para baixo).
+func _deform(o: Vector2) -> Vector2:
+	var h: float = clampf(-o.y / 230.0, 0.0, 1.0)
+	return Vector2(o.x + _lean * h * h, o.y + _lean * 0.22 * h * h)
+
+
+func _pt(b: Vector2, k: float, o: Vector2) -> Vector2:
+	return b + _deform(o) * k
+
 
 func _hx(offsets: Array, b: Vector2, k: float) -> PackedVector2Array:
 	var out := PackedVector2Array()
 	for o in offsets:
-		out.append(b + (o as Vector2) * k)
+		out.append(_pt(b, k, o as Vector2))
 	return out
 
 
@@ -451,7 +615,7 @@ func _hpoly(offsets: Array, b: Vector2, k: float, color: Color) -> void:
 
 
 func _hline(a: Vector2, c: Vector2, b: Vector2, k: float, color: Color, width: float) -> void:
-	draw_line(b + a * k, b + c * k, color, width * k, true)
+	draw_line(_pt(b, k, a), _pt(b, k, c), color, width * k, true)
 
 
 func _moved(offsets: Array, d: Vector2) -> Array:
@@ -461,7 +625,7 @@ func _moved(offsets: Array, d: Vector2) -> Array:
 	return out
 
 
-func _draw_hunter(base: Vector2, k0: float, morph: float) -> void:
+func _draw_hunter(base: Vector2, k0: float, morph: float, beat: float) -> void:
 	var sil := Color(0.004, 0.004, 0.009)
 	var cool := Color(0.80, 0.85, 1.0, 0.95)
 	var hot := Color(1.0, 0.35, 0.25, 0.95)
@@ -469,19 +633,23 @@ func _draw_hunter(base: Vector2, k0: float, morph: float) -> void:
 	var bob: float = sin(_total * 6.0) * 4.0 * (1.0 - 0.5 * morph)
 	var wind: float = sin(_total * 2.5) * 20.0
 	var kj: float = floorf(_total * 30.0)
-	var jit := Vector2(_hsh(kj) - 0.5, _hsh(kj + 3.7) - 0.5) * 16.0 * morph * morph
-	var k: float = k0 * (1.0 + 0.28 * morph)
+	var jit := Vector2(_hsh(kj) - 0.5, _hsh(kj + 3.7) - 0.5) * 22.0 * morph * morph
+	var k: float = k0 * (1.0 + 0.28 * morph + 0.025 * beat)
+	_lean = 78.0 * morph * morph + 10.0 * beat
 	var b: Vector2 = base + Vector2(0.0, bob * k) + jit
 
-	# Sombra no chão e aura vermelha.
+	# Sombra no chão, chão em brasa e partículas.
 	_glow_ellipse(base + Vector2(10.0, 30.0) * k, 120.0 * k, 16.0 * k, Color(0, 0, 0, 0.6))
-	_glow_ellipse(b + Vector2(0.0, -120.0) * k, 230.0 * k, 270.0 * k, Color(1.0, 0.15, 0.10, 0.24 * morph))
+	_draw_transform_fx(base, k, morph)
+	_glow_ellipse(b + Vector2(0.0, -120.0) * k, 230.0 * k, 270.0 * k, Color(1.0, 0.15, 0.10, (0.24 + 0.14 * beat) * morph))
 
 	# Corpo, pernas, braços (mesmos polígonos do caçador original).
 	_hpoly([Vector2(-30, -180), Vector2(40, -180), Vector2(60 + wind * 0.5, -30), Vector2(20 + wind, 10), Vector2(-85 + wind * 1.5, -10)], b, k, sil)
 	_hpoly([Vector2(-20, -80), Vector2(0, -80), Vector2(-10, 0), Vector2(-35, 0)], b, k, sil)
 	_hpoly([Vector2(10, -80), Vector2(35, -80), Vector2(45, 15), Vector2(15, 15)], b, k, sil)
-	_hline(Vector2(-20, -170), Vector2(-40, -90), b, k, sil, 22.0 + 14.0 * morph)
+	# Braço livre: os músculos incham e o braço se alonga.
+	var free_end := Vector2(-40.0 - 22.0 * morph, -90.0 + 52.0 * morph)
+	_hline(Vector2(-20, -170), free_end, b, k, sil, 22.0 + 18.0 * morph)
 	_hline(Vector2(30, -170), Vector2(90, -130), b, k, sil, 24.0 + 12.0 * morph)
 
 	# Braço com a arma + brilho azul (vira vermelho no fim).
@@ -490,23 +658,37 @@ func _draw_hunter(base: Vector2, k0: float, morph: float) -> void:
 	_hline(g1, g1 + Vector2(50, -5), b, k, sil, 24.0)
 	_hline(g1 + Vector2(40, -5), g2, b, k, sil, 14.0)
 	_hline(g1 + Vector2(40, -12), g2 + Vector2(0, -7), b, k, sil, 8.0)
-	var core: Vector2 = b + (g1 + Vector2(65, -8)) * k
+	var core: Vector2 = _pt(b, k, g1 + Vector2(65, -8))
 	var gp: float = 0.5 + 0.5 * sin(_total * 15.0)
 	_glow(core, (26.0 + gp * 14.0) * k, Color(0.3, 0.7, 1.0, 0.55).lerp(Color(1.0, 0.3, 0.2, 0.55), morph))
 	draw_circle(core, 4.0 * k, Color(0.7, 0.95, 1.0))
-	_glow(b + (g2 + Vector2(14, -12 + wind * 0.2)) * k, 26.0 * k, Color(0.6, 0.7, 0.8, 0.18))
+	_glow(_pt(b, k, g2 + Vector2(14, -12 + wind * 0.2)), 26.0 * k, Color(0.6, 0.7, 0.8, 0.18))
 
-	# Pescoço e cabeça; o focinho começa a esticar com o morph.
+	# Pescoço e cabeça; o focinho estica e as orelhas crescem com o morph.
 	_hpoly([Vector2(-25, -180), Vector2(35, -180), Vector2(25, -210), Vector2(-15, -210)], b, k, sil)
-	draw_circle(b + Vector2(5, -215) * k, 18.0 * k, sil)
+	draw_circle(_pt(b, k, Vector2(5, -215)), 18.0 * k, sil)
+	var m: float = 0.0
 	if morph > 0.3:
-		var m: float = (morph - 0.3) / 0.7
+		m = (morph - 0.3) / 0.7
 		_hpoly([Vector2(14, -224), Vector2(14 + 46.0 * m, -214), Vector2(14, -204)], b, k, sil)           # focinho
 		_hpoly([Vector2(-6, -228), Vector2(-14, -228 - 40.0 * m), Vector2(8, -230)], b, k, sil)           # orelha
-	# Olhos: de azul para amarelo brilhante.
+		_hpoly([Vector2(-14, -226), Vector2(-30, -224 - 30.0 * m), Vector2(-2, -230)], b, k, sil)         # 2ª orelha
+	# Presas aparecem no fim.
+	if morph > 0.6:
+		var fm: float = clampf((morph - 0.6) / 0.4, 0.0, 1.0)
+		var fang := Color(0.95, 0.93, 0.85, 0.95)
+		_hpoly([Vector2(14 + 22.0 * m, -208), Vector2(14 + 28.0 * m, -208), Vector2(14 + 25.0 * m, -208 + 11.0 * fm)], b, k, fang)
+		_hpoly([Vector2(14 + 36.0 * m, -211), Vector2(14 + 41.0 * m, -211), Vector2(14 + 39.0 * m, -211 + 9.0 * fm)], b, k, fang)
+
+	# Olhos: de azul para amarelo/vermelho brilhante, com feixes de luz.
 	var eye_col: Color = Color(0.4, 0.8, 1.0, 0.95).lerp(Color(1.0, 0.9, 0.3, 1.0), clampf(morph * 1.6, 0.0, 1.0))
 	_hline(Vector2(10, -215), Vector2(18, -212), b, k, eye_col, 2.0 + 3.0 * morph)
-	_glow(b + Vector2(14, -213) * k, (10.0 + 40.0 * morph) * k, Color(1.0, 0.8, 0.2, 0.15 + 0.65 * morph))
+	var eye: Vector2 = _pt(b, k, Vector2(14, -213))
+	_glow(eye, (10.0 + 46.0 * morph + 10.0 * beat) * k, Color(1.0, 0.8, 0.2, 0.15 + 0.65 * morph))
+	if morph > 0.3:
+		var ray: float = (morph - 0.3) / 0.7
+		draw_line(eye, eye + Vector2(60.0 + 240.0 * ray, -8.0 * ray) * k, Color(1.0, 0.85, 0.3, 0.22 * ray), 7.0 * k, true)
+		draw_line(eye, eye + Vector2(40.0 + 120.0 * ray, -4.0 * ray) * k, Color(1.0, 0.95, 0.6, 0.5 * ray), 2.5 * k, true)
 
 	# Chapéu: cai quando a transformação passa de 55%.
 	var hf: float = clampf((morph - 0.55) / 0.45, 0.0, 1.0)
@@ -516,28 +698,45 @@ func _draw_hunter(base: Vector2, k0: float, morph: float) -> void:
 	if hf < 0.2:
 		draw_polyline(_hx([Vector2(-30, -235), Vector2(35, -235), Vector2(70, -210)], b, k), rim, 3.0, true)
 
-	# Pelos nascendo nas costas e no peito.
+	# Pelos nascendo nas costas e no peito (mais densos que antes).
 	if morph > 0.12:
 		var m2: float = (morph - 0.12) / 0.88
-		for i in 26:
+		for i in 40:
 			var fi: float = float(i)
 			var back: bool = i % 2 == 0
 			var a_pt: Vector2 = Vector2(-30, -180) if back else Vector2(40, -180)
 			var c_pt: Vector2 = Vector2(-85 + wind * 1.5, -10) if back else Vector2(60 + wind * 0.5, -30)
 			var p: Vector2 = a_pt.lerp(c_pt, _hsh(fi * 3.1))
-			var spike: float = (16.0 + 34.0 * _hsh(fi * 7.7)) * m2 * (0.75 + 0.25 * sin(_total * 18.0 + fi))
+			var spike: float = (16.0 + 40.0 * _hsh(fi * 7.7)) * m2 * (0.75 + 0.25 * sin(_total * 18.0 + fi))
 			if spike < 3.0:
 				continue
 			var nrm := Vector2(-1.0, 0.0) if back else Vector2(1.0, 0.0)
 			_hpoly([p + Vector2(0, -9), p + nrm * spike + Vector2(0, spike * 0.25), p + Vector2(0, 9)], b, k, sil)
 
+	# Trapos rasgados soltos pelo vento conforme o corpo cresce.
+	if morph > 0.35:
+		var tm: float = (morph - 0.35) / 0.65
+		for i in 6:
+			var fi: float = float(i)
+			var from: Vector2 = Vector2(-20.0 + 60.0 * _hsh(fi * 1.3), -160.0 + 110.0 * _hsh(fi * 2.9))
+			var drift: Vector2 = Vector2(-50.0 - 70.0 * _hsh(fi * 4.1), -20.0 + 40.0 * sin(_total * 5.0 + fi)) * tm
+			draw_line(_pt(b, k, from), _pt(b, k, from + drift), sil, (5.0 - fi * 0.4) * k, true)
+
 	draw_polyline(_hx([Vector2(35, -180), Vector2(60 + wind * 0.5, -30)], b, k), rim, 2.5, true)
 	_hline(g1 + Vector2(40, -16), g2 + Vector2(0, -11), b, k, rim, 2.0)
 
-	# Garras brilhando na mão livre.
+	# Veias de brasa pulsando ao longo do pescoço e do braço.
+	if morph > 0.2:
+		var vm: float = (morph - 0.2) / 0.8
+		var vc := Color(1.0, 0.25, 0.10, (0.35 + 0.5 * beat) * vm)
+		_hline(Vector2(-5, -205), Vector2(-5, -178), b, k, vc, 2.0)
+		_hline(Vector2(-20, -165), free_end * 0.8 + Vector2(0, -20), b, k, vc, 2.0)
+		_hline(Vector2(25, -165), Vector2(80, -135), b, k, vc, 2.0)
+
+	# Garras crescendo na mão livre.
 	if morph > 0.5:
 		var cm: float = (morph - 0.5) / 0.5
-		var hand: Vector2 = b + Vector2(-40, -90) * k
+		var hand: Vector2 = _pt(b, k, free_end)
 		for i in 3:
 			var o: float = float(i - 1) * 9.0
-			draw_line(hand + Vector2(o, 0) * k, hand + Vector2(o - 4.0, 30.0 * cm) * k, Color(0.9, 0.85, 0.75, 0.9), 3.0 * k, true)
+			draw_line(hand + Vector2(o, 0) * k, hand + Vector2(o - 4.0, 44.0 * cm) * k, Color(0.9, 0.85, 0.75, 0.9), 3.5 * k, true)
