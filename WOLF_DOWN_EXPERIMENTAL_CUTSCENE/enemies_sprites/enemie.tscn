@@ -1,146 +1,50 @@
 [gd_scene format=3 uid="uid://dv1dj35dhswch"]
 
 [ext_resource type="Script" path="res://enemies_sprites/enemie.gd" id="1_v7gyu"]
-[ext_resource type="Texture2D" uid="uid://ckxak5vl6nc8a" path="res://enemies_sprites/run.png" id="2_prtaa"]
 [ext_resource type="Texture2D" uid="uid://bwpuog7yfek0j" path="res://enemies_sprites/run1.png" id="3_5mxet"]
 [ext_resource type="AudioStream" uid="uid://cgboygyrevgsg" path="res://enemies_sprites/freesound_crunchpixstudio-attack-release-384909.mp3" id="4_m6mhs"]
 [ext_resource type="AudioStream" uid="uid://bbqc1jieqr257" path="res://enemies_sprites/dragon-studio-punch-431475.mp3" id="5_t47o5"]
 
-[sub_resource type="Animation" id="Animation_5lh64"]
+[sub_resource type="Animation" id="Animation_reset"]
 length = 0.001
 tracks/0/type = "value"
 tracks/0/imported = false
 tracks/0/enabled = true
-tracks/0/path = NodePath("texture:texture")
+tracks/0/path = NodePath("texture:frame")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
-"times": PackedFloat32Array(0),
-"transitions": PackedFloat32Array(1),
-"update": 1,
-"values": [ExtResource("2_prtaa")]
-}
-tracks/1/type = "value"
-tracks/1/imported = false
-tracks/1/enabled = true
-tracks/1/path = NodePath("texture:hframes")
-tracks/1/interp = 1
-tracks/1/loop_wrap = true
-tracks/1/keys = {
-"times": PackedFloat32Array(0),
-"transitions": PackedFloat32Array(1),
-"update": 1,
-"values": [6]
-}
-tracks/2/type = "value"
-tracks/2/imported = false
-tracks/2/enabled = true
-tracks/2/path = NodePath("texture:vframes")
-tracks/2/interp = 1
-tracks/2/loop_wrap = true
-tracks/2/keys = {
-"times": PackedFloat32Array(0),
-"transitions": PackedFloat32Array(1),
-"update": 1,
-"values": [1]
-}
-tracks/3/type = "value"
-tracks/3/imported = false
-tracks/3/enabled = true
-tracks/3/path = NodePath("texture:frame")
-tracks/3/interp = 1
-tracks/3/loop_wrap = true
-tracks/3/keys = {
 "times": PackedFloat32Array(0),
 "transitions": PackedFloat32Array(1),
 "update": 1,
 "values": [0]
 }
-tracks/4/type = "value"
-tracks/4/imported = false
-tracks/4/enabled = true
-tracks/4/path = NodePath("collision:position")
-tracks/4/interp = 1
-tracks/4/loop_wrap = true
-tracks/4/keys = {
-"times": PackedFloat32Array(0),
-"transitions": PackedFloat32Array(1),
-"update": 0,
-"values": [Vector2(-0.5, -1)]
-}
 
-[sub_resource type="Animation" id="Animation_x1p5x"]
+[sub_resource type="Animation" id="Animation_run"]
 resource_name = "run"
 length = 0.6
+loop_mode = 1
 tracks/0/type = "value"
 tracks/0/imported = false
 tracks/0/enabled = true
-tracks/0/path = NodePath("texture:texture")
+tracks/0/path = NodePath("texture:frame")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
-"times": PackedFloat32Array(0),
-"transitions": PackedFloat32Array(1),
-"update": 1,
-"values": [ExtResource("3_5mxet")]
-}
-tracks/1/type = "value"
-tracks/1/imported = false
-tracks/1/enabled = true
-tracks/1/path = NodePath("texture:hframes")
-tracks/1/interp = 1
-tracks/1/loop_wrap = true
-tracks/1/keys = {
-"times": PackedFloat32Array(0),
-"transitions": PackedFloat32Array(1),
-"update": 1,
-"values": [6]
-}
-tracks/2/type = "value"
-tracks/2/imported = false
-tracks/2/enabled = true
-tracks/2/path = NodePath("texture:vframes")
-tracks/2/interp = 1
-tracks/2/loop_wrap = true
-tracks/2/keys = {
-"times": PackedFloat32Array(0),
-"transitions": PackedFloat32Array(1),
-"update": 1,
-"values": [1]
-}
-tracks/3/type = "value"
-tracks/3/imported = false
-tracks/3/enabled = true
-tracks/3/path = NodePath("texture:frame")
-tracks/3/interp = 1
-tracks/3/loop_wrap = true
-tracks/3/keys = {
 "times": PackedFloat32Array(0, 0.1, 0.2, 0.3, 0.4, 0.5),
 "transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1),
 "update": 1,
 "values": [0, 1, 2, 3, 4, 5]
 }
-tracks/4/type = "value"
-tracks/4/imported = false
-tracks/4/enabled = true
-tracks/4/path = NodePath("collision:position")
-tracks/4/interp = 1
-tracks/4/loop_wrap = true
-tracks/4/keys = {
-"times": PackedFloat32Array(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6),
-"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1),
-"update": 0,
-"values": [Vector2(-0.5, -1), Vector2(1, -6), Vector2(2, -15), Vector2(-1, -15), Vector2(-4, 2), Vector2(-4, 2), Vector2(-4, 2)]
-}
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_lrmmr"]
 _data = {
-"RESET": SubResource("Animation_5lh64"),
-"run": SubResource("Animation_x1p5x")
+"RESET": SubResource("Animation_reset"),
+"run": SubResource("Animation_run")
 }
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_e3sk5"]
-radius = 12.1655
+radius = 12.0
 
 [node name="enemie" type="CharacterBody2D" groups=["enemies"]]
 z_index = 1
@@ -149,9 +53,9 @@ collision_mask = 9
 script = ExtResource("1_v7gyu")
 
 [node name="texture" type="Sprite2D" parent="."]
-position = Vector2(-0.999996, -6)
-scale = Vector2(0.128906, 0.128906)
-texture = ExtResource("2_prtaa")
+position = Vector2(0, -1)
+scale = Vector2(0.16, 0.16)
+texture = ExtResource("3_5mxet")
 hframes = 6
 
 [node name="animation" type="AnimationPlayer" parent="."]
@@ -168,5 +72,4 @@ stream = ExtResource("5_t47o5")
 pitch_scale = 2.08
 
 [node name="collision" type="CollisionShape2D" parent="."]
-position = Vector2(-0.5, -1)
 shape = SubResource("CircleShape2D_e3sk5")

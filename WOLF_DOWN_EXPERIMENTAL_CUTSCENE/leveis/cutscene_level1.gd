@@ -14,10 +14,41 @@ const FONT_BOLD: FontFile = preload("res://fonts/MountainsofChristmas-Bold.ttf")
 const MUSIC_PATH: String = "res://leveis/moonlight_hollow.wav"
 const WOLF_SOUND_PATH: String = "res://audio/shot_07_olho_lobo.wav"
 
-const SHOT_DURATION: Array[float] = [8.0, 10.5, 10.5, 12.5]
-const ZOOM_FROM: Array[float] = [1.00, 1.02, 1.00, 1.12]
-const ZOOM_TO: Array[float] = [1.10, 1.16, 1.15, 1.00]
-const PAN_TO: Array[Vector2] = [Vector2(0, -10), Vector2(0, 60), Vector2(-70, 10), Vector2(0, 0)]
+## Duração MÍNIMA de cada plano. A duração real é calculada em _ready():
+## max(mínimo, tempo de digitação + READ_TIME). Assim o texto nunca é cortado.
+const SHOT_MIN: Array[float] = [5.5, 8.5, 9.0, 9.0, 7.5, 7.5, 4.5]
+const READ_TIME: float = 2.4   # tempo para ler depois que o texto termina
+
+# Pausas dramáticas da digitação (segundos extras).
+const PAUSE_SENTENCE: float = 0.22
+const PAUSE_COMMA: float = 0.10
+const PAUSE_LINE: float = 0.40
+
+# Áudio: o som do lobo toca no plano WOLF_SOUND_SHOT, em WOLF_SOUND_START segundos.
+# Os olhos começam a acender EYE_LAG segundos depois do início do som.
+const WOLF_SOUND_SHOT: int = 1
+const WOLF_SOUND_START: float = 1.2
+const EYE_LAG: float = 0.35
+const MUSIC_VOLUME_DB: float = -15.0
+const MUSIC_DUCK_DB: float = -23.0   # música abaixa enquanto o som do lobo toca
+
+const ZOOM_FROM: Array[float] = [
+	1.00, 1.02, 1.00, 1.04, 1.00, 1.03, 1.08
+]
+
+const ZOOM_TO: Array[float] = [
+	1.10, 1.16, 1.15, 1.12, 1.10, 1.15, 1.00
+]
+
+const PAN_TO: Array[Vector2] = [
+	Vector2(0, -10),
+	Vector2(0, 60),
+	Vector2(-70, 10),
+	Vector2(35, -20),
+	Vector2(-25, 10),
+	Vector2(45, -15),
+	Vector2(0, -35)
+]
 
 const GROUND: float = 900.0
 const HEAD_SCALE: float = 1.28
@@ -51,6 +82,11 @@ var _glow_tex: GradientTexture2D
 var _vignette_tex: GradientTexture2D
 var _music: AudioStreamPlayer
 var _wolf_sound: AudioStreamPlayer
+var _wolf_stream: AudioStream
+var _cue_fired: bool = false
+var _eye_ramp: float = 1.8       # duração do acender dos olhos (ajustada pelo tamanho do áudio)
+var _durations: Array[float] = []
+var _music_tween: Tween
 
 var _title_label: Label
 var _story_label: Label
@@ -58,18 +94,30 @@ var _hint_label: Label
 var _progress_label: Label
 
 var _story: Array[String] = [
-	"A batalha terminou.\nMas Lobsome não saiu ileso.",
-	"Sob a luz fria da lua, seus pelos roxos estavam manchados de sangue.\nSeus olhos ainda ardiam em amarelo.",
-	"Ele olha para o velho .38.\nAs criaturas estão ficando mais fortes... e essa arma já não parece suficiente.",
-	"Lobsome entende o que precisa fazer:\nmelhorar seu .38 antes do próximo confronto.\n\nO cemitério espera."
+	"A batalha terminou.\nO Caçador caiu entre os destroços.\nMas ainda não era o fim.",
+
+	"Ele se levantou lentamente.\nOs olhos do caçador se acenderam.\nAgora, havia apenas uma coisa em sua mente: vingança.",
+
+	"O velho .38 ainda estava em sua mão.\nEnferrujado e fraco demais para enfrentar o que viria.\nO lobo precisava de uma arma melhor.",
+
+	"Então ele se lembrou de uma antiga lenda.\nDrácula escondia uma arma poderosa o bastante para matá-lo.",
+
+	"Mas a arma estava protegida.\nTrês demônios guardavam seu segredo.",
+
+	"Lobsome olhou para a lua.\nSe queria sua vingança, teria que enfrentá-los."
 ]
+
 
 var _titles: Array[String] = [
 	"DEPOIS DA BATALHA",
-	"O LOBO FERIDO",
+	"O LOBO DESPERTA",
 	"UM .38 JÁ NÃO BASTA",
-	"A PRÓXIMA CAÇADA"
+	"A MALDIÇÃO DE DRÁCULA",
+	"O PODER PROIBIDO",
+	"OS TRÊS DEMÔNIOS",
+	"O LOBO NÃO RECUA"
 ]
+
 
 
 func _ready() -> void:
@@ -79,6 +127,8 @@ func _ready() -> void:
 	_make_textures()
 	_build_ui()
 	_apply_ui_scale()
+	_compute_durations()
+	_load_wolf_sound()
 	_reset_shot()
 	_start_music()
 	resized.connect(_apply_ui_scale)
@@ -91,31 +141,76 @@ func _process(delta: float) -> void:
 	_elapsed += delta
 	_total += delta
 
+	# Digitação com pausas dramáticas (fim de frase, vírgula, quebra de linha).
 	var current_text: String = _story[_shot]
 	if _typing_index < current_text.length():
 		_typing_time += delta
-		var steps: int = int(_typing_time / TYPE_SPEED)
-		if steps > 0:
-			_typing_time -= float(steps) * TYPE_SPEED
-			_typing_index = mini(_typing_index + steps, current_text.length())
-			_story_label.text = current_text.substr(0, _typing_index)
+		while _typing_index < current_text.length():
+			var d: float = _delay_after(current_text, _typing_index)
+			if _typing_time < d:
+				break
+			_typing_time -= d
+			_typing_index += 1
+		_story_label.text = current_text.substr(0, _typing_index)
+
+	# Cue de áudio: disparado pelo relógio do plano (não por timer solto),
+	# então pular o plano com ENTER nunca deixa um som "vazar" para o plano seguinte.
+	if not _cue_fired and _shot == WOLF_SOUND_SHOT and _elapsed >= WOLF_SOUND_START:
+		_cue_fired = true
+		_play_wolf_sound()
 
 	_title_label.modulate.a = clampf((_elapsed - 0.5) / 0.7, 0.0, 1.0)
 	_progress_label.text = "%d / %d" % [_shot + 1, _story.size()]
 	_update_fade()
 	queue_redraw()
 
-	if _elapsed >= SHOT_DURATION[_shot]:
+	if _elapsed >= _dur(_shot):
 		_next_shot()
 
 
 func _update_fade() -> void:
 	var fade_in := clampf(_elapsed / 0.75, 0.0, 1.0)
-	var time_left := SHOT_DURATION[_shot] - _elapsed
+	var time_left := _dur(_shot) - _elapsed
 	var fade_out := 0.0
 	if time_left < 0.75:
 		fade_out = clampf(1.0 - time_left / 0.75, 0.0, 1.0)
 	_fade_value = maxf(1.0 - fade_in, fade_out)
+
+
+# --- Tempo do texto -----------------------------------------------------------
+
+func _delay_after(text: String, i: int) -> float:
+	var c: String = text[i]
+	var nxt: String = text[i + 1] if i + 1 < text.length() else ""
+	match c:
+		"\n":
+			return TYPE_SPEED + PAUSE_LINE
+		".", "!", "?":
+			if nxt >= "0" and nxt <= "9":
+				return TYPE_SPEED               # ".38" não pausa
+			if nxt == ".":
+				return TYPE_SPEED + 0.05        # reticências
+			return TYPE_SPEED + PAUSE_SENTENCE
+		",", ";", ":", "—":
+			return TYPE_SPEED + PAUSE_COMMA
+	return TYPE_SPEED
+
+
+func _typing_total(text: String) -> float:
+	var t: float = 0.0
+	for i in text.length():
+		t += _delay_after(text, i)
+	return t
+
+
+func _compute_durations() -> void:
+	_durations.clear()
+	for i in _story.size():
+		_durations.append(maxf(SHOT_MIN[i], _typing_total(_story[i]) + READ_TIME))
+
+
+func _dur(i: int) -> float:
+	return _durations[i]
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -158,11 +253,12 @@ func _reset_shot() -> void:
 	_elapsed = 0.0
 	_typing_time = 0.0
 	_typing_index = 0
+	_cue_fired = false
 	_story_label.text = ""
 	_title_label.text = _titles[_shot]
 	_title_label.modulate.a = 0.0
 	_progress_label.text = "%d / %d" % [_shot + 1, _story.size()]
-	_play_shot_sound()
+	_stop_wolf_sound()
 	queue_redraw()
 
 
@@ -277,22 +373,53 @@ func _start_music() -> void:
 		return
 	_music = AudioStreamPlayer.new()
 	_music.stream = load(MUSIC_PATH)
-	_music.volume_db = -15.0
+	_music.volume_db = -45.0
 	add_child(_music)
 	_music.play()
+	_fade_music(MUSIC_VOLUME_DB, 2.0)   # entra suave junto com o fade da imagem
 
 
-func _play_shot_sound() -> void:
-	# O uivo/olho do lobo toca quando os olhos acendem (plano 2).
-	if _shot != 1 or not ResourceLoader.exists(WOLF_SOUND_PATH):
+func _fade_music(db: float, time: float) -> void:
+	if not is_instance_valid(_music) or _finished:
 		return
-	if is_instance_valid(_wolf_sound):
-		_wolf_sound.queue_free()
+	if _music_tween:
+		_music_tween.kill()
+	_music_tween = create_tween()
+	_music_tween.tween_property(_music, "volume_db", db, time)
+
+
+func _load_wolf_sound() -> void:
+	if not ResourceLoader.exists(WOLF_SOUND_PATH):
+		return
+	_wolf_stream = load(WOLF_SOUND_PATH)
+	# O acender dos olhos dura metade do som (entre 1.2s e 2.6s).
+	# Ajuste o 0.5 se o clímax do áudio estiver mais cedo/tarde.
+	var length: float = _wolf_stream.get_length()
+	if length > 0.0:
+		_eye_ramp = clampf(length * 0.5, 1.2, 2.6)
+
+
+func _play_wolf_sound() -> void:
+	if _wolf_stream == null:
+		return
 	_wolf_sound = AudioStreamPlayer.new()
-	_wolf_sound.stream = load(WOLF_SOUND_PATH)
-	_wolf_sound.volume_db = -8.0
+	_wolf_sound.stream = _wolf_stream
+	_wolf_sound.volume_db = -6.0
 	add_child(_wolf_sound)
 	_wolf_sound.play()
+	_fade_music(MUSIC_DUCK_DB, 0.35)    # música abaixa para o som do lobo aparecer
+	_wolf_sound.finished.connect(func() -> void: _fade_music(MUSIC_VOLUME_DB, 1.2))
+
+
+func _stop_wolf_sound() -> void:
+	if not is_instance_valid(_wolf_sound):
+		return
+	var snd: AudioStreamPlayer = _wolf_sound
+	_wolf_sound = null
+	var tw := create_tween()
+	tw.tween_property(snd, "volume_db", -60.0, 0.4)
+	tw.tween_callback(snd.queue_free)
+	_fade_music(MUSIC_VOLUME_DB, 1.2)
 
 
 # ----------------------------------------------------------------------------
@@ -360,7 +487,7 @@ func _draw() -> void:
 	_scale = screen.y / DESIGN_H
 	_vw = screen.x / _scale
 
-	var p := clampf(_elapsed / SHOT_DURATION[_shot], 0.0, 1.0)
+	var p := clampf(_elapsed / _dur(_shot), 0.0, 1.0)
 	var e := _smooth(p)
 	var zoom := lerpf(ZOOM_FROM[_shot], ZOOM_TO[_shot], e)
 	var sway := Vector2(sin(_total * 0.7) * 4.0, cos(_total * 0.9) * 3.0)
@@ -417,10 +544,11 @@ func _scene_wide() -> void:
 
 func _scene_rise() -> void:
 	var cx := _vw * 0.5
-	var dur: float = SHOT_DURATION[1]
+	var dur: float = _dur(1)
 	var rise := _smooth((_elapsed - 0.7) / (dur - 2.4))
-	var eye := _smooth((_elapsed - 1.4) / 1.8)
-	var flash := maxf(0.0, 1.0 - absf(_elapsed - 2.6) / 0.45)
+	var eye_start: float = WOLF_SOUND_START + EYE_LAG
+	var eye := _smooth((_elapsed - eye_start) / _eye_ramp)
+	var flash := maxf(0.0, 1.0 - absf(_elapsed - (eye_start + _eye_ramp * 0.7)) / 0.45)
 	_bg(Vector2(_vw * 0.74, 235.0), 105.0, true, false)
 	# Facho de luar caindo sobre o lobo enquanto ele se ergue.
 	var beam := 0.85 + 0.15 * sin(_total * 0.9)

@@ -43,7 +43,6 @@ func _physics_process(delta: float) -> void:
 	else:
 		move_toward_player()
 	move_and_slide()
-	texture.flip_h = velocity.x >= 0.0
 	_check_contact_attack()
 
 
@@ -60,8 +59,12 @@ func move_toward_player() -> void:
 		direction = global_position.direction_to(player.global_position)
 		animation.play("run")
 		velocity = direction * speed
+		# visão top-down: o sprite olha pra cima, então gira o corpo pro jogador
+		var turn := minf(10.0 * get_physics_process_delta_time(), 1.0)
+		texture.rotation = lerp_angle(texture.rotation, direction.angle() + PI * 0.5, turn)
 	else:
 		velocity = Vector2.ZERO
+		animation.play("idle")
 
 
 func apply_knockback(force: Vector2) -> void:

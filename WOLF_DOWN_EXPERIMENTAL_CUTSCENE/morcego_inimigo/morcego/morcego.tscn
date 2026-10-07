@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://422ws2trbetn"]
 
-[ext_resource type="Script" uid="uid://drqyt6w7061m5" path="res://enemies_sprites/enemie.gd" id="1_s3eq1"]
+[ext_resource type="Script" uid="uid://dunkxtdlrjr0l" path="res://morcego_inimigo/morcego/morcego.gd" id="1_s3eq1"]
 [ext_resource type="Texture2D" uid="uid://ddpoym2dw0wnd" path="res://morcego_inimigo/morcego/morcego_attack.png" id="1_v735g"]
 [ext_resource type="Texture2D" uid="uid://o57fd2xr8lm7" path="res://morcego_inimigo/morcego/morcego_death.png" id="2_s3eq1"]
 [ext_resource type="Texture2D" uid="uid://cwe108rtuv0x1" path="res://morcego_inimigo/morcego/morcego_hurt.png" id="3_ntuwx"]
