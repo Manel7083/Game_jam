@@ -10,6 +10,7 @@ extends Node2D
 
 const FONT_BOLD: FontFile = preload("res://fonts/MountainsofChristmas-Bold.ttf")
 const SPR := "res://gaiola/sprites/"
+const NEON = preload("res://leveis/neon_ambience.gd")
 
 const ARENA_SIZE := Vector2(896.0, 640.0)               # tamanho da imagem arena_gaiola.png
 const FLOOR_RECT := Rect2(32.0, 72.0, 832.0, 536.0)     # parte jogável do piso
@@ -38,6 +39,9 @@ const PLINTHS: Array[Vector2] = [Vector2(208.0, 262.0), Vector2(448.0, 330.0), V
 @export var resurrect_guardians: bool = true
 ## Multiplica a vida dos guardiões na volta (1.0 = vida cheia, igual à primeira luta).
 @export var resurrect_health_mult: float = 1.0
+## Partículas neon de ambiente (0 = desligado, 1 = padrão, 2 = mais cheio).
+@export var neon_enabled: bool = true
+@export_range(0.0, 2.0, 0.05) var neon_intensity: float = 1.0
 
 @onready var player: Node2D = $wolf
 @onready var _cage: Node2D = $Cage
@@ -81,10 +85,23 @@ func _ready() -> void:
 	ui.add_child(_overlay)
 
 	_limit_camera()
+	_setup_neon()
 	_build_locks()
 	_build_statues()
 	_rev_rest_y = _revolver.position.y
 	_run()
+
+
+## Neon da câmara de pedra: violeta, laranja (tochas) e ciano. Cobre só a arena.
+func _setup_neon() -> void:
+	if not neon_enabled or neon_intensity <= 0.0:
+		return
+	var amb = NEON.new()
+	amb.name = "NeonAmbience"
+	amb.palette = PackedColorArray([Color(0.78, 0.38, 1.0), Color(1.0, 0.5, 0.2), Color(0.2, 0.95, 1.0)])
+	amb.fixed_rect = Rect2(Vector2.ZERO, ARENA_SIZE)
+	amb.intensity = neon_intensity
+	add_child(amb)
 
 
 func _limit_camera() -> void:
@@ -160,7 +177,7 @@ func _say(text: String, dur: float = 2.2) -> void:
 
 func _run() -> void:
 	await _wait(1.2)
-	_say("A GAIOLA DOS GUARDIÕES", 2.6)
+	_say("A SALA DOS GUARDIÕES", 2.6)
 	await _wait(3.4)
 	_say("Derrote os guardiões, um de cada vez.", 2.4)
 	await _wait(2.6)
@@ -193,7 +210,7 @@ func _run() -> void:
 	await _wait(1.8)
 	_pickup_ready = true
 	_overlay.flash = 0.7
-	_say("O REVÓLVER .38 ESTÁ LIVRE!", 3.0)
+	_say("O .38 LENDÁRIO ESTÁ LIVRE!", 3.0)
 
 
 ## Os guardiões voltam dos mortos TODOS JUNTOS; os cadeados se refazem e cada morte parte um de novo.
@@ -283,7 +300,7 @@ func _collect() -> void:
 	_revolver.hide()
 	_cage_light.energy = 0.0
 	_overlay.flash = 1.0
-	_say("REVÓLVER .38 OBTIDO", 3.0)
+	_say("O .38 LENDÁRIO FOI RECUPERADO", 3.0)
 	await _wait(1.8)
 	_say("TAB troca de arma  -  R recarrega", 3.0)
 	await _wait(4.0)

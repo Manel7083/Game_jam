@@ -1,29 +1,28 @@
-[gd_scene load_steps=4 format=3 uid="uid://d3ug7ftpp8nqi"]
+[gd_scene format=3 uid="uid://d3ug7ftpp8nqi"]
 
-[ext_resource type="Texture2D" uid="uid://vrf5cij2v0ag" path="res://decoração/abobora.png" id="1_317y5"]
+[ext_resource type="Texture2D" uid="uid://vrf5cij2v0ag" path="res://decora├º├úo/abobora.png" id="1_317y5"]
 [ext_resource type="Texture2D" uid="uid://cxsbg5eyuc2i5" path="res://bullet/light2D-gradient.png" id="2_8hjqa"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_vrr03"]
 radius = 24.0208
 
-[node name="abobora" type="StaticBody2D"]
+[node name="abobora" type="StaticBody2D" unique_id=60762156]
 z_index = 1
 collision_layer = 8
 collision_mask = 7
 
-[node name="texture" type="Sprite2D" parent="."]
+[node name="texture" type="Sprite2D" parent="." unique_id=1966855312]
 position = Vector2(-15, -21)
 scale = Vector2(1.9375, 1.9375)
 texture = ExtResource("1_317y5")
 
-[node name="light" type="PointLight2D" parent="."]
+[node name="light" type="PointLight2D" parent="." unique_id=2058695535]
 position = Vector2(2.00001, -2.99999)
 scale = Vector2(0.378906, 0.378906)
 color = Color(1, 0.396078, 1, 1)
 energy = 2.66
 texture = ExtResource("2_8hjqa")
 
-[node name="collision" type="CollisionShape2D" parent="."]
+[node name="collision" type="CollisionShape2D" parent="." unique_id=2082881757]
 position = Vector2(1, -7)
 shape = SubResource("CircleShape2D_vrr03")
-disabled = true

@@ -1,11 +1,13 @@
 class_name Level1AftermathCinematic
 extends Control
 
-## Wolf Down - Cinemática pós Level 1 (100% desenhada por código, sem PNG).
-## Plano 1: campo de batalha, Lobsome caído de joelhos sob o luar.
-## Plano 2: Lobsome se levanta (como o Drácula saindo da tumba) e os olhos acendem.
-## Plano 3: close do velho .38 na garra ferida.
-## Plano 4: silhueta uivando para a lua, com o cemitério esperando ao longe.
+## Wolf Down - Cinemática pós Level 1 (100% desenhada por código, sem PNG).  6 planos, 6 diálogos.
+## Plano 1: campo de batalha, o Lobo caído entre os destroços (a fera quase some, a maldição o mantém de pé).
+## Plano 2: o Lobo se levanta (como o Drácula saindo da tumba) e os olhos acendem - a lembrança da dívida.
+## Plano 3: close do velho .38 na garra ferida ("já não basta").
+## Plano 4: flashback - séculos atrás, o castelo de Drácula sela o .38 do Lobo com correntes e runas.
+## Plano 5: a Sala dos Guardiões - a gaiola com o .38 e os três demônios de pedra (Bruto, Arremessador, Rei Gárgula).
+## Plano 6: silhueta uivando para a lua: "dessa vez, não recuaria". Em seguida a Fase 2 (level_gaiola).
 
 const DESIGN_H: float = 1080.0
 const TYPE_SPEED: float = 0.025
@@ -94,19 +96,18 @@ var _hint_label: Label
 var _progress_label: Label
 
 var _story: Array[String] = [
-	"A batalha terminou.\nO Caçador caiu entre os destroços.\nMas ainda não era o fim.",
+	"A batalha terminou.\nO Lobo caiu ferido entre os destroços.\nPor um instante, a fera quase desapareceu...\nmas a maldição ainda o mantinha de pé.",
 
-	"Ele se levantou lentamente.\nOs olhos do caçador se acenderam.\nAgora, havia apenas uma coisa em sua mente: vingança.",
+	"Ele se levantou lentamente.\nA dor atravessava seu corpo,\nmas havia algo ainda mais forte: a lembrança de uma antiga dívida.\nDrácula ainda estava vivo.",
 
-	"O velho .38 ainda estava em sua mão.\nEnferrujado e fraco demais para enfrentar o que viria.\nO lobo precisava de uma arma melhor.",
+	"O velho .38 ainda estava em suas mãos.\nEra a arma que o acompanhava havia muito tempo,\nmas já não bastaria para enfrentar Drácula.\nO Lobo precisava recuperar aquilo que havia sido selado.",
 
-	"Então ele se lembrou de uma antiga lenda.\nDrácula escondia uma arma poderosa o bastante para matá-lo.",
+	"Séculos atrás, Drácula selou uma arma dentro do castelo.\nUma arma que pertencia ao próprio Lobo...\nantes de ele se tornar uma lenda.\nFoi na mesma noite em que a maldição o marcou.",
 
-	"Mas a arma estava protegida.\nTrês demônios guardavam seu segredo.",
+	"A arma estava presa numa gaiola, na Sala dos Guardiões.\nNinguém poderia alcançá-la com facilidade.\nCriaturas antigas protegiam aquele lugar,\ne o caminho até elas seria o próximo passo.",
 
-	"Lobsome olhou para a lua.\nSe queria sua vingança, teria que enfrentá-los."
+	"Três demônios de pedra montavam guarda.\nO Lobo ergueu os olhos para a lua.\nEle já havia perdido tudo uma vez.\nDessa vez, não recuaria."
 ]
-
 
 var _titles: Array[String] = [
 	"DEPOIS DA BATALHA",
@@ -114,8 +115,7 @@ var _titles: Array[String] = [
 	"UM .38 JÁ NÃO BASTA",
 	"A MALDIÇÃO DE DRÁCULA",
 	"O PODER PROIBIDO",
-	"OS TRÊS DEMÔNIOS",
-	"O LOBO NÃO RECUA"
+	"OS TRÊS DEMÔNIOS"
 ]
 
 
@@ -503,6 +503,10 @@ func _draw() -> void:
 			_scene_rise()
 		2:
 			_scene_gun()
+		3:
+			_scene_seal()
+		4:
+			_scene_vault()
 		_:
 			_scene_howl()
 
@@ -590,6 +594,314 @@ func _scene_howl() -> void:
 	_wolf_howl(Vector2(cx + 40.0, 905.0), 0.9, _total, howl)
 	_draw_mist(935.0, 0.05)
 	_draw_embers(18)
+
+
+# ----------------------------------------------------------------------------
+# Planos 4 e 5 (lore): o selo de Drácula e a Sala dos Guardiões
+# ----------------------------------------------------------------------------
+
+func _ring_pts(c: Vector2, rx: float, ry: float, n: int, rot: float) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	for i in n + 1:
+		var a: float = rot + TAU * float(i) / float(n)
+		out.append(c + Vector2(cos(a) * rx, sin(a) * ry))
+	return out
+
+
+## Círculo rúnico (rx = ry: de frente; ry pequeno: deitado no chão, em perspectiva).
+func _rune_seal(c: Vector2, rx: float, ry: float, col: Color, spin: float, alpha: float) -> void:
+	draw_polyline(_ring_pts(c, rx, ry, 64, 0.0), _ca(col, 0.85 * alpha), 4.0, true)
+	draw_polyline(_ring_pts(c, rx * 0.78, ry * 0.78, 56, 0.0), _ca(col, 0.55 * alpha), 3.0, true)
+	for i in 24:
+		var a: float = spin + TAU * float(i) / 24.0
+		var p0: Vector2 = c + Vector2(cos(a) * rx * 0.80, sin(a) * ry * 0.80)
+		var p1: Vector2 = c + Vector2(cos(a) * rx * 0.96, sin(a) * ry * 0.96)
+		draw_line(p0, p1, _ca(col, 0.60 * alpha), 3.0, true)
+	var star := PackedVector2Array()
+	for i in 6:
+		var a2: float = -spin * 0.6 + TAU * float((i * 2) % 5) / 5.0 - PI * 0.5
+		star.append(c + Vector2(cos(a2) * rx * 0.74, sin(a2) * ry * 0.74))
+	draw_polyline(star, _ca(col, 0.50 * alpha), 3.0, true)
+
+
+## Corrente de elos alternados (elo de frente / elo de perfil) com um leve balanço.
+func _chain(a: Vector2, b: Vector2, links: int, col: Color, glow: float) -> void:
+	var d: Vector2 = b - a
+	var dist: float = d.length()
+	if dist < 1.0 or links < 1:
+		return
+	var dir: Vector2 = d / dist
+	var nrm := Vector2(-dir.y, dir.x)
+	for i in links:
+		var t: float = (float(i) + 0.5) / float(links)
+		var sag: float = sin(t * PI) * 22.0 * sin(_total * 1.3 + a.x * 0.01)
+		var c: Vector2 = a.lerp(b, t) + nrm * sag
+		if i % 2 == 0:
+			draw_line(c - dir * 15.0, c + dir * 15.0, col, 9.0, true)
+		else:
+			draw_line(c - dir * 10.0, c + dir * 10.0, col, 4.0, true)
+		if glow > 0.0:
+			_glow(c, 16.0, Color(1.0, 0.15, 0.2, 0.18 * glow))
+
+
+func _seal_window(pos: Vector2, w: float, h: float, lit: float, sd: float) -> void:
+	var fl: float = 0.75 + 0.25 * sin(_total * 7.0 + sd * 5.0)
+	draw_rect(Rect2(pos.x - w * 0.5, pos.y - h, w, h), Color(0.02, 0.008, 0.02))
+	draw_rect(Rect2(pos.x - w * 0.5 + 2.0, pos.y - h + 2.0, w - 4.0, h - 4.0), Color(1.0, 0.18, 0.2, 0.9 * fl * lit))
+	_glow(pos + Vector2(0.0, -h * 0.5), maxf(w * 3.0, 14.0), Color(1.0, 0.18, 0.2, 0.28 * fl * lit))
+
+
+## Castelo de Drácula em silhueta, janelas acesas em vermelho.
+func _seal_castle(base: Vector2, s: float, lit: float) -> void:
+	var wall := Color(0.028, 0.010, 0.030)
+	var roof := Color(0.016, 0.006, 0.020)
+	var rim := Color(1.0, 0.25, 0.30, 0.45)
+	var cx: float = base.x
+	var by: float = base.y
+	draw_rect(Rect2(cx - 320.0 * s, by - 150.0 * s, 640.0 * s, 170.0 * s), wall)
+	for i in 17:
+		draw_rect(Rect2(cx - 320.0 * s + float(i) * 38.0 * s, by - 176.0 * s, 22.0 * s, 28.0 * s), wall)
+	var towers: Array = [[-270.0, 96.0, 300.0, 440.0], [270.0, 96.0, 300.0, 440.0], [-130.0, 84.0, 390.0, 540.0], [130.0, 84.0, 390.0, 540.0]]
+	var idx: float = 0.0
+	for tw in towers:
+		var x: float = cx + float(tw[0]) * s
+		var w: float = float(tw[1]) * s
+		var th: float = float(tw[2]) * s
+		var ta: float = float(tw[3]) * s
+		draw_rect(Rect2(x - w * 0.5, by - th, w, th + 24.0 * s), wall)
+		_poly(PackedVector2Array([
+			Vector2(x - w * 0.5 - 14.0 * s, by - th), Vector2(x, by - ta), Vector2(x + w * 0.5 + 14.0 * s, by - th)
+		]), roof)
+		draw_line(Vector2(x - w * 0.5, by - th), Vector2(x - w * 0.5, by), rim, 3.0 * s, true)
+		_seal_window(Vector2(x, by - th * 0.62), 16.0 * s, 38.0 * s, lit, idx)
+		idx += 1.0
+	# Torre central com a rosácea acesa.
+	draw_rect(Rect2(cx - 110.0 * s, by - 480.0 * s, 220.0 * s, 500.0 * s), wall)
+	_poly(PackedVector2Array([
+		Vector2(cx - 130.0 * s, by - 480.0 * s), Vector2(cx, by - 720.0 * s), Vector2(cx + 130.0 * s, by - 480.0 * s)
+	]), roof)
+	draw_line(Vector2(cx - 110.0 * s, by - 480.0 * s), Vector2(cx - 110.0 * s, by), rim, 3.0 * s, true)
+	var rc := Vector2(cx, by - 370.0 * s)
+	_glow(rc, 150.0 * s, Color(1.0, 0.15, 0.2, 0.40 * lit))
+	draw_circle(rc, 46.0 * s, Color(0.02, 0.008, 0.02))
+	draw_circle(rc, 38.0 * s, Color(1.0, 0.25, 0.22, 0.95 * lit))
+	for i in 8:
+		var a: float = float(i) * TAU / 8.0
+		draw_line(rc, rc + Vector2(cos(a), sin(a)) * 38.0 * s, Color(0.02, 0.008, 0.02), 3.0 * s)
+	# Portão.
+	_poly(PackedVector2Array([
+		Vector2(cx - 52.0 * s, by + 20.0 * s), Vector2(cx - 52.0 * s, by - 60.0 * s), Vector2(cx - 30.0 * s, by - 100.0 * s),
+		Vector2(cx + 30.0 * s, by - 100.0 * s), Vector2(cx + 52.0 * s, by - 60.0 * s), Vector2(cx + 52.0 * s, by + 20.0 * s)
+	]), Color(0.01, 0.005, 0.012))
+
+
+## PLANO 4 - "A MALDIÇÃO DE DRÁCULA": flashback vermelho. Do castelo sai um raio que prende o .38 do Lobo
+## em correntes e num círculo rúnico (o selo). Dois olhos vermelhos observam do céu.
+func _scene_seal() -> void:
+	var cx: float = _vw * 0.5
+	var t: float = _elapsed
+	var pulse: float = 0.85 + 0.15 * sin(_total * 3.0)
+	var lit: float = 0.55 + 0.45 * pulse
+
+	# Céu e lua de sangue: a noite em que tudo foi selado.
+	_draw_vertical_gradient(Rect2(-400.0, -300.0, _vw + 800.0, 1700.0), Color(0.06, 0.004, 0.02), Color(0.32, 0.035, 0.08))
+	var moon := Vector2(cx + 560.0, 300.0)
+	_glow(moon, 760.0, Color(1.0, 0.10, 0.12, 0.14))
+	draw_circle(moon, 150.0, Color(0.50, 0.04, 0.07))
+	draw_circle(moon, 142.0, Color(0.92, 0.16, 0.18, 0.96))
+	for i in 6:
+		var fi: float = float(i)
+		draw_circle(moon + Vector2(cos(fi * 2.4), sin(fi * 1.7)) * 70.0, 10.0 + fi * 3.0, Color(0.62, 0.07, 0.10, 0.5))
+	_draw_clouds(300.0, Color(0.10, 0.0, 0.02, 0.30), 10.0, 5, 2.3)
+	_draw_mountains(800.0, 150.0, Color(0.030, 0.010, 0.030))
+	_draw_pines(870.0, Color(0.012, 0.004, 0.014), 300.0, 0.0)
+
+	# Castelo à esquerda e o raio que sai da rosácea até o .38.
+	var castle := Vector2(cx - 560.0, 900.0)
+	_seal_castle(castle, 0.78, lit)
+	var rc := Vector2(castle.x, castle.y - 370.0 * 0.78)
+	var gc := Vector2(cx + 20.0, 500.0 + sin(_total * 1.6) * 10.0)
+	var bd: Vector2 = (gc - rc).normalized()
+	var bn := Vector2(-bd.y, bd.x)
+	draw_polygon(
+		PackedVector2Array([rc + bn * 8.0, rc - bn * 8.0, gc - bn * 70.0, gc + bn * 70.0]),
+		PackedColorArray([
+			Color(1.0, 0.15, 0.2, 0.26 * pulse), Color(1.0, 0.15, 0.2, 0.26 * pulse),
+			Color(1.0, 0.15, 0.2, 0.10 * pulse), Color(1.0, 0.15, 0.2, 0.10 * pulse)
+		]))
+
+	# Olhos de Drácula no céu, sobre o castelo.
+	var ea: float = _smooth((t - 1.2) / 1.5)
+	for si in 2:
+		var sd: float = -1.0 if si == 0 else 1.0
+		var ep := Vector2(castle.x + sd * 46.0, 215.0)
+		_glow(ep, 70.0, Color(1.0, 0.08, 0.12, 0.35 * ea))
+		_poly(PackedVector2Array([
+			ep + Vector2(-sd * 22.0, 8.0), ep + Vector2(sd * 24.0, -10.0), ep + Vector2(sd * 18.0, 2.0)
+		]), Color(1.0, 0.25, 0.25, ea))
+
+	# Chão.
+	_draw_vertical_gradient(Rect2(-200.0, 880.0, _vw + 400.0, 380.0), Color(0.05, 0.015, 0.03), Color(0.004, 0.002, 0.008))
+
+	# O selo: círculo rúnico atrás do .38 e quatro correntes que voam das paredes até a arma.
+	var seal_a: float = _smooth((t - 0.3) / 1.6)
+	_glow(gc, 420.0, Color(1.0, 0.15, 0.2, 0.22 * pulse * seal_a))
+	_rune_seal(gc, 330.0, 330.0, Color(1.0, 0.22, 0.25), _total * 0.35, seal_a)
+	var far: Array[Vector2] = [Vector2(-760.0, -440.0), Vector2(760.0, -400.0), Vector2(-700.0, 440.0), Vector2(740.0, 420.0)]
+	var near: Array[Vector2] = [Vector2(-120.0, -10.0), Vector2(130.0, -20.0), Vector2(-40.0, 40.0), Vector2(90.0, 60.0)]
+	for i in 4:
+		var prog: float = _smooth((t - 0.5 - float(i) * 0.45) / 1.6)
+		if prog <= 0.01:
+			continue
+		var a0: Vector2 = gc + far[i]
+		var a1: Vector2 = a0.lerp(gc + near[i], prog)
+		_chain(a0, a1, maxi(2, int(22.0 * prog)), Color(0.10, 0.08, 0.12), prog)
+	_gun(gc + Vector2(60.0, -20.0), 0.82, 1.0)
+
+	_draw_mist(940.0, 0.05)
+	_draw_embers(30)
+
+
+## Estátua de demônio para a Sala dos Guardiões. kind: 0 = Bruto, 1 = Arremessador, 2 = Rei Gárgula.
+## eye: 0 = pedra adormecida, 1 = olhos e rachaduras em brasa.
+func _stone_demon(base: Vector2, sc: float, kind: int, eye: float) -> void:
+	var st := Color(0.060, 0.052, 0.078)
+	var st_l := Color(0.11, 0.095, 0.14)
+	var rim := Color(1.0, 0.62, 0.32, 0.38)
+	var red := Color(1.0, 0.12, 0.14)
+	var wid: float = 1.0
+	if kind == 0:
+		wid = 1.25
+	elif kind == 1:
+		wid = 0.9
+	_glow_ellipse(_at(base, sc, 0.0, 6.0), 190.0 * sc, 26.0 * sc, Color(0, 0, 0, 0.6))
+
+	# Plinto.
+	_poly(PackedVector2Array([_at(base, sc, -120.0, 0.0), _at(base, sc, -120.0, -52.0), _at(base, sc, 120.0, -52.0), _at(base, sc, 120.0, 0.0)]), st_l)
+	draw_line(_at(base, sc, -120.0, -52.0), _at(base, sc, 120.0, -52.0), rim, 3.0 * sc, true)
+
+	# Asas do Rei Gárgula.
+	if kind == 2:
+		for si in 2:
+			var sw: float = -1.0 if si == 0 else 1.0
+			_poly(PackedVector2Array([
+				_at(base, sc, sw * 70.0, -290.0), _at(base, sc, sw * 190.0, -450.0), _at(base, sc, sw * 300.0, -470.0),
+				_at(base, sc, sw * 270.0, -380.0), _at(base, sc, sw * 310.0, -300.0), _at(base, sc, sw * 220.0, -300.0),
+				_at(base, sc, sw * 230.0, -220.0), _at(base, sc, sw * 150.0, -250.0), _at(base, sc, sw * 90.0, -200.0)
+			]), st)
+
+	# Tronco.
+	var torso := PackedVector2Array([
+		_at(base, sc, -88.0 * wid, -52.0), _at(base, sc, -112.0 * wid, -190.0), _at(base, sc, -80.0 * wid, -290.0),
+		_at(base, sc, 0.0, -316.0), _at(base, sc, 80.0 * wid, -290.0), _at(base, sc, 112.0 * wid, -190.0), _at(base, sc, 88.0 * wid, -52.0)
+	])
+	_poly(torso, st)
+
+	# Braços (cada tipo uma pose).
+	if kind == 0:
+		for si in 2:
+			var sb: float = -1.0 if si == 0 else 1.0
+			var fist: Vector2 = _at(base, sc, sb * 156.0 * wid, -118.0)
+			draw_line(_at(base, sc, sb * 100.0 * wid, -270.0), fist, st, 62.0 * sc, true)
+			draw_circle(fist, 38.0 * sc, st)
+	elif kind == 1:
+		draw_line(_at(base, sc, -90.0, -270.0), _at(base, sc, -140.0, -130.0), st, 46.0 * sc, true)
+		draw_line(_at(base, sc, 90.0, -270.0), _at(base, sc, 160.0, -384.0), st, 46.0 * sc, true)
+		var ball: Vector2 = _at(base, sc, 172.0, -414.0)
+		draw_circle(ball, 30.0 * sc, st_l)
+		for i in 8:
+			var a: float = float(i) * TAU / 8.0
+			draw_line(ball + Vector2(cos(a), sin(a)) * 26.0 * sc, ball + Vector2(cos(a), sin(a)) * 44.0 * sc, st_l, 7.0 * sc, true)
+	else:
+		draw_line(_at(base, sc, -100.0, -270.0), _at(base, sc, 30.0, -196.0), st, 46.0 * sc, true)
+		draw_line(_at(base, sc, 100.0, -270.0), _at(base, sc, -30.0, -214.0), st, 46.0 * sc, true)
+
+	# Cabeça, chifres (e coroa do Rei).
+	var hc: Vector2 = _at(base, sc, 0.0, -350.0)
+	draw_circle(hc, 46.0 * sc, st)
+	_poly(PackedVector2Array([_at(base, sc, -30.0, -338.0), _at(base, sc, 30.0, -338.0), _at(base, sc, 22.0, -298.0), _at(base, sc, -22.0, -298.0)]), st)
+	var horn_h: float = 440.0 if kind != 2 else 470.0
+	for si in 2:
+		var sh: float = -1.0 if si == 0 else 1.0
+		_poly(PackedVector2Array([_at(base, sc, sh * 30.0, -376.0), _at(base, sc, sh * 100.0, -horn_h), _at(base, sc, sh * 62.0, -358.0)]), st)
+	if kind == 2:
+		for i in 3:
+			var cxo: float = (float(i) - 1.0) * 24.0
+			_poly(PackedVector2Array([_at(base, sc, cxo - 9.0, -392.0), _at(base, sc, cxo, -432.0), _at(base, sc, cxo + 9.0, -392.0)]), st_l)
+	draw_polyline(PackedVector2Array([torso[1], torso[2], torso[3], torso[4], torso[5]]), rim, 3.0 * sc, true)
+
+	# Rachaduras e olhos em brasa.
+	draw_line(_at(base, sc, -22.0, -262.0), _at(base, sc, 6.0, -214.0), _ca(red, 0.75 * eye), 3.0 * sc, true)
+	draw_line(_at(base, sc, 6.0, -214.0), _at(base, sc, -10.0, -170.0), _ca(red, 0.75 * eye), 3.0 * sc, true)
+	draw_line(_at(base, sc, 6.0, -214.0), _at(base, sc, 40.0, -190.0), _ca(red, 0.75 * eye), 3.0 * sc, true)
+	for si in 2:
+		var se: float = -1.0 if si == 0 else 1.0
+		var ep: Vector2 = _at(base, sc, se * 19.0, -352.0)
+		_glow(ep, 46.0 * sc, Color(1.0, 0.10, 0.12, 0.42 * eye))
+		_glow(ep, 18.0 * sc, Color(1.0, 0.55, 0.40, 0.70 * eye))
+		draw_circle(ep, 5.5 * sc, Color(1.0, 0.25 + 0.55 * eye, 0.20, 0.22 + 0.78 * eye))
+
+
+## Gaiola de ferro com o .38 flutuando dentro e os três cadeados na frente.
+func _vault_cage(c: Vector2, sc: float, pulse: float) -> void:
+	var iron := Color(0.035, 0.030, 0.045)
+	_poly(PackedVector2Array([_at(c, sc, -150.0, 0.0), _at(c, sc, -150.0, -34.0), _at(c, sc, 150.0, -34.0), _at(c, sc, 150.0, 0.0)]), Color(0.08, 0.07, 0.10))
+	_glow(_at(c, sc, 0.0, -150.0), 340.0 * sc, Color(1.0, 0.70, 0.30, 0.24 * pulse))
+	_gun(_at(c, sc, 52.0, -150.0 + sin(_total * 2.2) * 6.0), 0.34 * sc, 1.0)
+	for i in 7:
+		var x: float = -150.0 + float(i) * 50.0
+		var top_y: float = -230.0 - sqrt(maxf(150.0 * 150.0 - x * x, 0.0))
+		draw_line(_at(c, sc, x, -34.0), _at(c, sc, x, top_y), iron, 7.0 * sc, true)
+	draw_arc(_at(c, sc, 0.0, -230.0), 150.0 * sc, PI, TAU, 28, iron, 9.0 * sc, true)
+	draw_line(_at(c, sc, -150.0, -60.0), _at(c, sc, 150.0, -60.0), iron, 7.0 * sc, true)
+	for i in 3:
+		var lx: float = (float(i) - 1.0) * 70.0
+		_glow(_at(c, sc, lx, -78.0), 36.0 * sc, Color(1.0, 0.20, 0.15, 0.30 * pulse))
+		draw_rect(Rect2(_at(c, sc, lx - 16.0, -92.0), Vector2(32.0, 28.0) * sc), Color(0.30, 0.22, 0.10))
+		draw_arc(_at(c, sc, lx, -92.0), 12.0 * sc, PI, TAU, 10, Color(0.45, 0.38, 0.22), 4.0 * sc, true)
+		draw_circle(_at(c, sc, lx, -78.0), 4.0 * sc, Color(0.03, 0.02, 0.03))
+
+
+## PLANO 5 - "O PODER PROIBIDO": a Sala dos Guardiões. A gaiola brilha ao fundo e os três demônios de pedra
+## acordam, um por vez (mesma ordem da fase: Bruto, Arremessador, Rei Gárgula).
+func _scene_vault() -> void:
+	var cx: float = _vw * 0.5
+	var t: float = _elapsed
+	var pulse: float = 0.85 + 0.15 * sin(_total * 2.6)
+
+	_draw_vertical_gradient(Rect2(-400.0, -300.0, _vw + 800.0, 1700.0), Color(0.008, 0.006, 0.018), Color(0.050, 0.030, 0.070))
+	var cols: int = 7
+	var gap: float = (_vw + 300.0) / float(cols)
+	for i in cols + 1:
+		var px: float = -150.0 + float(i) * gap
+		_draw_vertical_gradient(Rect2(px - 46.0, -100.0, 92.0, 1000.0), Color(0.020, 0.014, 0.030), Color(0.060, 0.045, 0.080))
+		draw_line(Vector2(px - 46.0, 0.0), Vector2(px - 46.0, 880.0), Color(0.55, 0.40, 0.55, 0.14), 3.0)
+		if i < cols:
+			draw_arc(Vector2(px + gap * 0.5, 130.0), gap * 0.5 - 46.0, PI, TAU, 24, Color(0.020, 0.014, 0.030), 40.0, true)
+	_glow_ellipse(Vector2(cx, 520.0), 780.0, 430.0, Color(1.0, 0.35, 0.18, 0.10 * pulse))
+
+	# Chão com o círculo rúnico em perspectiva.
+	_draw_vertical_gradient(Rect2(-300.0, 860.0, _vw + 600.0, 420.0), Color(0.07, 0.05, 0.09), Color(0.01, 0.008, 0.016))
+	_rune_seal(Vector2(cx, 935.0), minf(760.0, _vw * 0.40), 120.0, Color(1.0, 0.45, 0.25), _total * 0.2, 0.55 * pulse)
+
+	# Braseiros.
+	for bx in [_vw * 0.06, _vw * 0.94]:
+		var fx: float = bx
+		draw_line(Vector2(fx, 890.0), Vector2(fx, 700.0), Color(0.03, 0.02, 0.03), 10.0)
+		draw_rect(Rect2(fx - 28.0, 684.0, 56.0, 16.0), Color(0.05, 0.04, 0.05))
+		_draw_fire(Vector2(fx, 684.0), 50.0)
+
+	# A gaiola com o .38.
+	_vault_cage(Vector2(cx, 600.0), 1.0, pulse)
+
+	# Os três guardiões acordam um a um (olhos acendem em sequência).
+	var off: float = minf(560.0, _vw * 0.30)
+	_stone_demon(Vector2(cx - off, 930.0), 1.0, 0, _smooth((t - 1.0) / 0.8))
+	_stone_demon(Vector2(cx + off, 930.0), 1.0, 2, _smooth((t - 3.6) / 0.8))
+	_stone_demon(Vector2(cx, 995.0), 0.8, 1, _smooth((t - 2.3) / 0.8))
+
+	_draw_mist(950.0, 0.07)
+	_draw_embers(22)
 
 
 # ----------------------------------------------------------------------------

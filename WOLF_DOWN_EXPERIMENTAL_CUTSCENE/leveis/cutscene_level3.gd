@@ -2,10 +2,10 @@ class_name Level3EndingCinematic
 extends Control
 
 ## Wolf Down - Cinemática final (pós-Drácula). 100% desenhada por código, sem PNG.
-## Plano 1: Drácula racha por dentro e se desfaz em cinzas e morcegos.
+## Plano 1: o Lobo (de pé, com o .38 lendário) encara Drácula, que racha por dentro e se desfaz em cinzas e morcegos.
 ## Plano 2: a maldição se quebra - a lua vermelha esfria e os morcegos fogem do castelo.
-## Plano 3: o lobo ferido cai de joelhos e volta à forma de caçador.
-## Plano 4: amanhecer - o caçador descansa encostado numa lápide. Fade para "FIM".
+## Plano 3: o lobo ferido cai de joelhos; a fera descansa e a lenda se esconde sob uma capa e um chapéu.
+## Plano 4: amanhecer - a lenda (só capa e chapéu) descansa encostada numa lápide. Fade para "FIM - A DÍVIDA FOI PAGA".
 ##
 ## Emite `finished` quando termina (ou quando o jogador pula com ESC).
 
@@ -25,7 +25,7 @@ const PAN_TO: Array[Vector2] = [Vector2(0, -20), Vector2(0, 40), Vector2(60, -10
 
 const GROUND: float = 900.0
 
-# Paleta do lobo (mesma da cinemática do nível 1) e do caçador.
+# Paleta do lobo (mesma da cinemática do nível 1) e da lenda (capa e chapéu).
 const FUR_D: Color = Color(0.14, 0.065, 0.24)
 const FUR_DD: Color = Color(0.06, 0.025, 0.11)
 const BONE: Color = Color(0.86, 0.82, 0.74)
@@ -56,10 +56,10 @@ var _hint_label: Label
 var _progress_label: Label
 
 var _story: Array[String] = [
-	"O Conde Drácula cambaleia.\nO poder de séculos se rompe por dentro,\ne seu corpo começa a ruir.",
-	"Com ele, desmorona a maldição que cobria a noite.\nOs morcegos fogem. A lua volta a ser apenas uma lua.",
-	"Ferido e exausto, o lobo cai de joelhos.\nO fardo que ele carregava se desfaz aos poucos...\ne o lobo volta a ser um homem.",
-	"A vingança foi cumprida.\nPela primeira vez em muito tempo, o caçador não precisa lutar.\nEle fecha os olhos... e finalmente descansa."
+	"Drácula cambaleou.\nDepois de séculos, seu poder finalmente começou a ruir.\nSeu corpo se partiu diante do Lobo,\ncomo se a própria maldição estivesse sendo destruída junto com ele.",
+	"Quando Drácula caiu, a maldição que prendia aquela antiga alma também começou a desaparecer.\nOs morcegos fugiram.\nO castelo ficou em silêncio.\nE, pela primeira vez, aquele mundo não pertencia mais a Drácula.",
+	"Ferido e exausto, o Lobo caiu de joelhos.\nA luz da lua atravessou seu corpo.\nAs garras se guardaram.\nA fera descansou.\nE, diante daquela lua, a lenda jurou que não iria mostrar seu fardo novamente.",
+	"A dívida havia sido paga.\nDepois de tantos anos vagando, o caçador finalmente não precisava mais lutar.\nEle fechou os olhos...\ne finalmente descansou."
 ]
 
 var _titles: Array[String] = [
@@ -430,7 +430,7 @@ func _draw() -> void:
 			var fs: int = int(150.0 * _scale)
 			var fs2: int = int(46.0 * _scale)
 			draw_string(FONT_BOLD, Vector2(0.0, screen.y * 0.5), "FIM", HORIZONTAL_ALIGNMENT_CENTER, screen.x, fs, Color(0.95, 0.86, 1.0, ta))
-			draw_string(FONT_BOLD, Vector2(0.0, screen.y * 0.5 + 90.0 * _scale), "A VINGANÇA FOI CUMPRIDA", HORIZONTAL_ALIGNMENT_CENTER, screen.x, fs2, Color(0.80, 0.70, 0.95, ta * 0.9))
+			draw_string(FONT_BOLD, Vector2(0.0, screen.y * 0.5 + 90.0 * _scale), "A DÍVIDA FOI PAGA", HORIZONTAL_ALIGNMENT_CENTER, screen.x, fs2, Color(0.80, 0.70, 0.95, ta * 0.9))
 
 
 # ==============================================================================
@@ -471,6 +471,48 @@ func _limb_l(base: Vector2, s: float, a: Vector2, b: Vector2, w: float, col: Col
 	draw_line(base + a * s, base + b * s, col, w * s, true)
 	draw_circle(base + a * s, w * 0.5 * s, col)
 	draw_circle(base + b * s, w * 0.5 * s, col)
+
+
+## Contorno rasgado (barra de capa): vai de a até b e afunda a cada dois pontos.
+func _hem(a: Vector2, b: Vector2, n: int, depth: float) -> Array:
+	var out: Array = []
+	for i in n + 1:
+		var u: float = float(i) / float(n)
+		var pnt: Vector2 = a.lerp(b, u)
+		if i % 2 == 1:
+			pnt.y += depth * (0.6 + 0.4 * _hsh(float(i) * 3.1))
+		out.append(pnt)
+	return out
+
+
+## Polígono com degradê vertical (cor no topo -> cor na base).
+func _gpoly(pts: PackedVector2Array, top: Color, bot: Color) -> void:
+	if pts.size() < 3:
+		return
+	var y0: float = pts[0].y
+	var y1: float = pts[0].y
+	for p in pts:
+		y0 = minf(y0, p.y)
+		y1 = maxf(y1, p.y)
+	var cols := PackedColorArray()
+	for p in pts:
+		cols.append(top.lerp(bot, clampf((p.y - y0) / maxf(1.0, y1 - y0), 0.0, 1.0)))
+	draw_polygon(pts, cols)
+
+
+## Chapéu de aba larga (a lenda só aparece coberta por capa e chapéu).
+## hp = centro da aba (em coordenadas locais da figura, como o resto); tilt inclina o chapéu (positivo = abaixa para a direita).
+func _hat(base: Vector2, s: float, hp: Vector2, size: float, tilt: float, col: Color, rim: Color) -> void:
+	var k: float = s * size
+	var o: Vector2 = base + hp * s
+	var brim: Array = [Vector2(-92, 6 - tilt), Vector2(-66, -22 - tilt * 0.6), Vector2(-14, -34 - tilt * 0.2), Vector2(50, -34 + tilt * 0.2),
+		Vector2(104, -18 + tilt * 0.6), Vector2(150, 8 + tilt), Vector2(100, 22 + tilt * 0.7), Vector2(30, 28 + tilt * 0.3), Vector2(-40, 26 - tilt * 0.2)]
+	var crown: Array = [Vector2(-40, -26 - tilt * 0.3), Vector2(-34, -92 - tilt * 0.2), Vector2(-8, -112), Vector2(30, -108), Vector2(52, -86 + tilt * 0.2), Vector2(58, -28 + tilt * 0.2)]
+	_pl(o, k, crown, col.lightened(0.04))
+	_pl(o, k, brim, col)
+	_ln(Vector2(-39, -34), Vector2(57, -34 + tilt * 0.2), o, k, Color(0.34, 0.05, 0.09), 14.0)
+	draw_polyline(_xf([Vector2(-66, -22 - tilt * 0.6), Vector2(-14, -34 - tilt * 0.2), Vector2(50, -34 + tilt * 0.2), Vector2(104, -18 + tilt * 0.6), Vector2(150, 8 + tilt)], o, k), rim, 3.0 * k, true)
+	draw_polyline(_xf([Vector2(-34, -92), Vector2(-8, -112), Vector2(30, -108), Vector2(52, -86)], o, k), rim, 3.0 * k, true)
 
 
 func _draw_stars(count: int, y_max: float, intensity: float) -> void:
@@ -596,49 +638,112 @@ func _hall(k: float) -> void:
 	var moon_glow: Color = Color(1.0, 0.10, 0.12).lerp(Color(0.55, 0.62, 0.95), k)
 	_draw_moon(Vector2(cx, 470.0), 190.0, moon_col, moon_glow)
 
-	var wall_c: Color = Color(0.012, 0.006, 0.014).lerp(Color(0.016, 0.018, 0.034), k)
+	# Parede de pedra, bem mais clara que o preto antigo para as formas aparecerem.
+	var wall_c: Color = Color(0.085, 0.034, 0.055).lerp(Color(0.065, 0.075, 0.125), k)
 	var wall := PackedVector2Array([
 		Vector2(-500.0, 1500.0), Vector2(-500.0, -400.0), Vector2(_vw + 500.0, -400.0),
 		Vector2(_vw + 500.0, 1500.0), Vector2(cx + hw, 1500.0)])
 	for i in range(arch.size() - 1, -1, -1):
 		wall.append(arch[i])
 	wall.append(Vector2(cx - hw, 1500.0))
-	draw_colored_polygon(wall, wall_c)
+	_gpoly(wall, wall_c.darkened(0.45), wall_c)
 	var rim_c: Color = Color(1.0, 0.25, 0.30, 0.55).lerp(Color(0.60, 0.68, 1.0, 0.45), k)
-	draw_polyline(arch, rim_c, 4.0, true)
+	var beam: Color = Color(1.0, 0.1, 0.15).lerp(Color(0.60, 0.68, 1.0), k)
+	var line_c: Color = Color(0.0, 0.0, 0.0, 0.34)
+
+	# Fiadas de blocos (só nos dois lados da janela e acima dela).
+	for r in 12:
+		var ry: float = 20.0 + float(r) * 74.0
+		if ry < 90.0:
+			draw_line(Vector2(-300.0, ry), Vector2(_vw + 300.0, ry), line_c, 2.0)
+		else:
+			draw_line(Vector2(-300.0, ry), Vector2(cx - hw, ry), line_c, 2.0)
+			draw_line(Vector2(cx + hw, ry), Vector2(_vw + 300.0, ry), line_c, 2.0)
+		for c in 14:
+			var vx: float = float(c) * 190.0 + (95.0 if r % 2 == 1 else 0.0) - 60.0
+			if absf(vx - cx) < hw + 6.0 and ry > 90.0:
+				continue
+			draw_line(Vector2(vx, ry), Vector2(vx, ry + 74.0), line_c, 2.0)
+	draw_polyline(arch, rim_c, 5.0, true)
+	# Moldura de pedra em volta do arco
+	var frame := PackedVector2Array()
+	for p in arch:
+		frame.append(p + Vector2(0.0, -16.0) + Vector2(signf(p.x - cx) * 16.0, 0.0))
+	draw_polyline(frame, wall_c.lightened(0.12), 10.0, true)
 
 	# Vitral (tracejado)
 	for mx in [-0.5, 0.0, 0.5]:
-		draw_line(Vector2(cx + mx * hw, spring - 130.0), Vector2(cx + mx * hw, floor_y), wall_c, 12.0)
-	draw_line(Vector2(cx - hw, 640.0), Vector2(cx + hw, 640.0), wall_c, 12.0)
-	draw_line(Vector2(cx - hw, 800.0), Vector2(cx + hw, 800.0), wall_c, 10.0)
-	draw_arc(Vector2(cx, 260.0), 70.0, 0.0, TAU, 28, wall_c, 10.0)
+		draw_line(Vector2(cx + mx * hw, spring - 130.0), Vector2(cx + mx * hw, floor_y), wall_c.darkened(0.55), 12.0)
+	draw_line(Vector2(cx - hw, 640.0), Vector2(cx + hw, 640.0), wall_c.darkened(0.55), 12.0)
+	draw_line(Vector2(cx - hw, 800.0), Vector2(cx + hw, 800.0), wall_c.darkened(0.55), 10.0)
+	draw_arc(Vector2(cx, 260.0), 70.0, 0.0, TAU, 28, wall_c.darkened(0.55), 10.0)
 	for i in 6:
 		var a: float = float(i) * TAU / 6.0
-		draw_line(Vector2(cx, 260.0), Vector2(cx, 260.0) + Vector2(cos(a), sin(a)) * 70.0, wall_c, 7.0)
+		draw_line(Vector2(cx, 260.0), Vector2(cx, 260.0) + Vector2(cos(a), sin(a)) * 70.0, wall_c.darkened(0.55), 7.0)
+
+	# Colunas góticas, iluminadas pelo lado da janela.
+	for side in [-1.0, 1.0]:
+		for layer in 2:
+			var px: float = cx + side * (hw + 190.0 + float(layer) * 340.0)
+			var pw: float = 96.0 - float(layer) * 20.0
+			var pc: Color = wall_c.lightened(0.10 - float(layer) * 0.04)
+			_gpoly(PackedVector2Array([Vector2(px - pw * 0.5, -60.0), Vector2(px + pw * 0.5, -60.0), Vector2(px + pw * 0.5, floor_y + 6.0), Vector2(px - pw * 0.5, floor_y + 6.0)]), pc.lightened(0.05), pc.darkened(0.35))
+			# capitel e base
+			draw_rect(Rect2(px - pw * 0.5 - 14.0, 150.0, pw + 28.0, 30.0), pc.lightened(0.08))
+			draw_rect(Rect2(px - pw * 0.5 - 18.0, floor_y - 34.0, pw + 36.0, 40.0), pc.lightened(0.06))
+			# frisos e lado iluminado
+			draw_line(Vector2(px - side * pw * 0.12, 190.0), Vector2(px - side * pw * 0.12, floor_y - 36.0), Color(0, 0, 0, 0.30), 3.0)
+			draw_line(Vector2(px - side * pw * 0.5, 180.0), Vector2(px - side * pw * 0.5, floor_y - 36.0), _ca(beam, 0.40 - float(layer) * 0.15), 4.0)
+
+	# Estandartes
+	for side in [-1.0, 1.0]:
+		var bx: float = cx + side * (hw + 70.0 + 60.0)
+		var sway: float = sin(_total * 0.9 + side) * 5.0
+		var cloth: Color = Color(0.46, 0.04, 0.09).lerp(Color(0.20, 0.07, 0.14), k)
+		var bn: Array = [Vector2(-52, 190), Vector2(52, 190), Vector2(52 + sway, 560), Vector2(0, 500 + sway), Vector2(-52 + sway, 560)]
+		var top_y: float = 190.0
+		_gpoly(_xf(bn, Vector2(bx, 0.0), 1.0), cloth.lightened(0.10), cloth.darkened(0.45))
+		draw_line(Vector2(bx - 62.0, top_y), Vector2(bx + 62.0, top_y), Color(0.78, 0.55, 0.18, 0.8), 8.0)
+		_pl(Vector2(bx, 330.0), 1.0, [Vector2(0, -52), Vector2(30, 0), Vector2(0, 52), Vector2(-30, 0)], Color(0.80, 0.60, 0.22, 0.55))
+		_pl(Vector2(bx, 330.0), 1.0, [Vector2(0, -32), Vector2(18, 0), Vector2(0, 32), Vector2(-18, 0)], cloth.darkened(0.3))
 
 	# Raios de luz da janela
-	var beam: Color = Color(1.0, 0.1, 0.15).lerp(Color(0.60, 0.68, 1.0), k)
 	for i in 4:
 		var fi: float = float(i)
 		var x0: float = cx - hw * 0.75 + fi * hw * 0.5
 		draw_polygon(
 			PackedVector2Array([Vector2(x0 - 30.0, 640.0), Vector2(x0 + 30.0, 640.0), Vector2(x0 + 260.0 + fi * 60.0, floor_y + 160.0), Vector2(x0 - 140.0 + fi * 60.0, floor_y + 160.0)]),
-			PackedColorArray([_ca(beam, 0.10), _ca(beam, 0.10), _ca(beam, 0.0), _ca(beam, 0.0)]))
+			PackedColorArray([_ca(beam, 0.12), _ca(beam, 0.12), _ca(beam, 0.0), _ca(beam, 0.0)]))
 
-	# Chão e tapete
-	_vgrad(Rect2(-400.0, floor_y, _vw + 800.0, 500.0), Color(0.035, 0.012, 0.02).lerp(Color(0.03, 0.035, 0.06), k), Color(0.008, 0.003, 0.006))
+	# Chão de lajes em perspectiva
+	_vgrad(Rect2(-400.0, floor_y, _vw + 800.0, 500.0), Color(0.10, 0.045, 0.06).lerp(Color(0.06, 0.07, 0.11), k), Color(0.012, 0.005, 0.009))
+	var tile_c := Color(0.0, 0.0, 0.0, 0.40)
+	for i in range(-14, 15):
+		draw_line(Vector2(cx + float(i) * 96.0, floor_y), Vector2(cx + float(i) * 230.0, 1260.0), tile_c, 2.0)
+	for fy in [floor_y + 22.0, floor_y + 52.0, floor_y + 92.0, floor_y + 150.0, floor_y + 230.0, floor_y + 340.0]:
+		draw_line(Vector2(-300.0, fy), Vector2(_vw + 300.0, fy), tile_c, 2.0)
+	# Reflexo da janela no piso
+	draw_polygon(
+		PackedVector2Array([Vector2(cx - hw * 0.8, floor_y), Vector2(cx + hw * 0.8, floor_y), Vector2(cx + hw * 1.5, floor_y + 230.0), Vector2(cx - hw * 1.5, floor_y + 230.0)]),
+		PackedColorArray([_ca(beam, 0.30), _ca(beam, 0.30), _ca(beam, 0.0), _ca(beam, 0.0)]))
 	_glow_ellipse(Vector2(cx, floor_y + 40.0), 520.0, 60.0, _ca(beam, 0.30))
 	var carpet: Color = Color(0.30, 0.02, 0.05).lerp(Color(0.16, 0.05, 0.10), k)
 	draw_colored_polygon(PackedVector2Array([Vector2(cx - 170.0, floor_y), Vector2(cx + 170.0, floor_y), Vector2(cx + 420.0, 1200.0), Vector2(cx - 420.0, 1200.0)]), carpet)
 	draw_line(Vector2(cx - 170.0, floor_y), Vector2(cx - 420.0, 1200.0), Color(0.75, 0.50, 0.15, 0.45), 7.0)
 	draw_line(Vector2(cx + 170.0, floor_y), Vector2(cx + 420.0, 1200.0), Color(0.75, 0.50, 0.15, 0.45), 7.0)
 
-	# Braseiros laterais
+	# Braseiros laterais, agora com bacia e chamas.
 	for sx in [cx - 520.0, cx + 520.0]:
 		var fl: float = 0.8 + 0.2 * sin(_total * 9.0 + sx)
-		_glow(Vector2(sx, floor_y - 240.0), 190.0, _ca(Color(1.0, 0.25, 0.2).lerp(Color(0.5, 0.6, 1.0), k), 0.30 * fl))
-		draw_line(Vector2(sx, floor_y + 20.0), Vector2(sx, floor_y - 220.0), Color(0.03, 0.02, 0.03), 10.0)
+		var fire_c: Color = Color(1.0, 0.45, 0.18).lerp(Color(0.55, 0.70, 1.0), k)
+		_glow(Vector2(sx, floor_y - 250.0), 230.0, _ca(fire_c, 0.30 * fl))
+		draw_line(Vector2(sx, floor_y + 20.0), Vector2(sx, floor_y - 215.0), Color(0.04, 0.03, 0.04), 10.0)
+		draw_line(Vector2(sx - 22.0, floor_y + 22.0), Vector2(sx + 22.0, floor_y + 22.0), Color(0.04, 0.03, 0.04), 12.0)
+		_pl(Vector2(sx, floor_y - 215.0), 1.0, [Vector2(-34, -6), Vector2(34, -6), Vector2(22, 26), Vector2(-22, 26)], Color(0.05, 0.04, 0.05))
+		var f1: float = 1.0 + 0.25 * sin(_total * 11.0 + sx)
+		var f2: float = 1.0 + 0.30 * sin(_total * 13.0 + sx * 2.0)
+		_pl(Vector2(sx, floor_y - 218.0), 1.0, [Vector2(-26, 0), Vector2(-18, -44 * f1), Vector2(-6, -22), Vector2(4, -78 * f2), Vector2(16, -30), Vector2(24, -52 * f1), Vector2(28, 0)], _ca(fire_c, 0.85))
+		_pl(Vector2(sx, floor_y - 218.0), 1.0, [Vector2(-12, 0), Vector2(-4, -30 * f2), Vector2(4, -50 * f1), Vector2(12, -26 * f2), Vector2(14, 0)], Color(1.0, 0.92, 0.65, 0.9))
 
 
 # ==============================================================================
@@ -648,23 +753,79 @@ func _hall(k: float) -> void:
 func _dracula(base: Vector2, k: float, cs: float, a: float, eye: float) -> void:
 	if a <= 0.01:
 		return
-	var sil := Color(0.0, 0.0, 0.0, a)
-	var rim := Color(1.0, 0.35, 0.35, 0.9 * a)
-	_pl(base, k, [Vector2(0, 160), Vector2(-60, 130), Vector2(-120, 160), Vector2(-160 - cs, 30), Vector2(-220 - cs, -50), Vector2(-150, -130),
-		Vector2(-40, -70), Vector2(40, -70), Vector2(150, -130), Vector2(220 + cs, -50), Vector2(160 + cs, 30), Vector2(120, 160), Vector2(60, 130)], sil)
-	_pl(base, k, [Vector2(-30, -60), Vector2(30, -60), Vector2(15, 20), Vector2(-15, 20)], sil)
-	_pl(base, k, [Vector2(-15, 20), Vector2(15, 20), Vector2(8, 140), Vector2(-8, 140)], sil)
-	_ln(Vector2(-30, -50), Vector2(-100, -20), base, k, sil, 14.0)
-	_ln(Vector2(30, -50), Vector2(100, -20), base, k, sil, 14.0)
-	_pl(base, k, [Vector2(0, -60), Vector2(-40, -120), Vector2(40, -120)], sil)
-	draw_circle(base + Vector2(0, -100) * k, 16.0 * k, sil)
-	_pl(base, k, [Vector2(-15, -110), Vector2(15, -110), Vector2(25 + cs * 0.5, -60), Vector2(-25 - cs * 0.5, -60)], sil)
-	draw_polyline(_xf([Vector2(-220 - cs, -50), Vector2(-150, -130), Vector2(-40, -70)], base, k), rim, 3.0, true)
-	draw_polyline(_xf([Vector2(40, -70), Vector2(150, -130), Vector2(220 + cs, -50)], base, k), rim, 3.0, true)
+	var sil := Color(0.025, 0.0, 0.035, a)
+	var coat := Color(0.07, 0.035, 0.09, a)
+	var rim := Color(1.0, 0.40, 0.42, 0.85 * a)
+	var skin := Color(0.74, 0.70, 0.78, a)
+	var skin_d := Color(0.40, 0.33, 0.45, a)
+	var claw := Color(0.90, 0.86, 0.80, a)
+
+	# Capa aberta (parte de trás), com barra rasgada.
+	var left: Array = [Vector2(-55, -95), Vector2(-130, -142), Vector2(-215 - cs, -98), Vector2(-286 - cs, -12), Vector2(-302 - cs, 92)]
+	var right: Array = [Vector2(302 + cs, 92), Vector2(286 + cs, -12), Vector2(215 + cs, -98), Vector2(130, -142), Vector2(55, -95)]
+	var outer: Array = left + _hem(Vector2(-272 - cs, 176), Vector2(272 + cs, 176), 10, 30.0) + right
+	_pl(base, k, outer, sil)
+	# Forro carmesim
+	var inl: Array = [Vector2(-46, -82), Vector2(-120, -124), Vector2(-198 - cs * 0.9, -82), Vector2(-266 - cs * 0.9, -6), Vector2(-280 - cs * 0.9, 86)]
+	var inr: Array = [Vector2(280 + cs * 0.9, 86), Vector2(266 + cs * 0.9, -6), Vector2(198 + cs * 0.9, -82), Vector2(120, -124), Vector2(46, -82)]
+	var inner: Array = inl + _hem(Vector2(-252 - cs * 0.8, 160), Vector2(252 + cs * 0.8, 160), 10, 22.0) + inr
+	_gpoly(_xf(inner, base, k), Color(0.62, 0.05, 0.12, a), Color(0.16, 0.0, 0.04, a))
+	# Dobras da capa
+	for i in 7:
+		var fx: float = 70.0 + float(i) * 34.0 + cs * (float(i) / 6.0)
+		_ln(Vector2(-fx * 0.30, -70), Vector2(-fx - 14.0, 168), base, k, Color(0.02, 0.0, 0.03, 0.55 * a), 5.0)
+		_ln(Vector2(fx * 0.30, -70), Vector2(fx + 14.0, 168), base, k, Color(0.02, 0.0, 0.03, 0.55 * a), 5.0)
+	draw_polyline(_xf([Vector2(-302 - cs, 92), Vector2(-286 - cs, -12), Vector2(-215 - cs, -98), Vector2(-130, -142), Vector2(-55, -95)], base, k), rim, 3.0, true)
+	draw_polyline(_xf([Vector2(55, -95), Vector2(130, -142), Vector2(215 + cs, -98), Vector2(286 + cs, -12), Vector2(302 + cs, 92)], base, k), rim, 3.0, true)
+
+	# Gola alta da capa atrás da cabeça
 	for side in [-1.0, 1.0]:
-		var ep: Vector2 = base + Vector2(side * 6.0, -102.0) * k
-		_glow(ep, 24.0 * eye, Color(1.0, 0.0, 0.1, 0.8 * a))
-		draw_circle(ep, 3.0, Color(1.0, 0.4, 0.4, a))
+		_pl(base, k, [Vector2(side * 14.0, -84), Vector2(side * 78.0, -184), Vector2(side * 50.0, -128), Vector2(side * 62.0, -78)], sil)
+		_pl(base, k, [Vector2(side * 22.0, -88), Vector2(side * 70.0, -168), Vector2(side * 46.0, -116)], Color(0.50, 0.04, 0.10, a))
+		draw_line(base + Vector2(side * 78.0, -184.0) * k, base + Vector2(side * 62.0, -78.0) * k, rim, 2.0, true)
+
+	# Braços abertos, segurando a capa, com garras.
+	for side in [-1.0, 1.0]:
+		_limb_l(base, k, Vector2(side * 44.0, -66), Vector2(side * 118.0, -52), 28.0, coat)
+		_limb_l(base, k, Vector2(side * 118.0, -52), Vector2(side * (178.0 + cs * 0.55), -88), 22.0, coat)
+		var hnd: Vector2 = Vector2(side * (182.0 + cs * 0.55), -92)
+		draw_circle(base + hnd * k, 11.0 * k, skin)
+		for f in 4:
+			var fa: float = -1.0 + float(f) * 0.62
+			_pl(base, k, [hnd + Vector2(side * 4.0, fa * 6.0 - 4.0), hnd + Vector2(side * (34.0 + float(f % 2) * 8.0), fa * 20.0 - 8.0), hnd + Vector2(side * 6.0, fa * 6.0 + 4.0)], claw)
+
+	# Corpo: casaca escura, colete e camisa branca
+	_pl(base, k, [Vector2(-50, -80), Vector2(50, -80), Vector2(74, -18), Vector2(58, 172), Vector2(-58, 172), Vector2(-74, -18)], coat)
+	_pl(base, k, [Vector2(-20, -84), Vector2(20, -84), Vector2(8, 24), Vector2(-8, 24)], Color(0.84, 0.82, 0.88, a))
+	_pl(base, k, [Vector2(-26, -84), Vector2(-4, -60), Vector2(-14, 10), Vector2(-40, -40)], coat)
+	_pl(base, k, [Vector2(26, -84), Vector2(4, -60), Vector2(14, 10), Vector2(40, -40)], coat)
+	_pl(base, k, [Vector2(-8, -78), Vector2(8, -78), Vector2(0, -40)], Color(0.60, 0.03, 0.10, a))
+	draw_circle(base + Vector2(0, -34) * k, 6.5 * k, Color(1.0, 0.18, 0.2, a))
+	_glow(base + Vector2(0, -34) * k, 30.0 * k, Color(1.0, 0.1, 0.15, 0.55 * a))
+	for i in 3:
+		draw_circle(base + Vector2(0, -6.0 + float(i) * 18.0) * k, 2.4 * k, Color(0.55, 0.50, 0.30, a))
+	draw_polyline(_xf([Vector2(-74, -18), Vector2(-58, 172)], base, k), rim, 2.0, true)
+	draw_polyline(_xf([Vector2(74, -18), Vector2(58, 172)], base, k), rim, 2.0, true)
+
+	# Pescoço e cabeça pálida
+	_pl(base, k, [Vector2(-12, -86), Vector2(12, -86), Vector2(14, -66), Vector2(-14, -66)], skin_d)
+	for side in [-1.0, 1.0]:
+		_pl(base, k, [Vector2(side * 21.0, -116), Vector2(side * 42.0, -138), Vector2(side * 24.0, -100)], skin_d)
+	_pl(base, k, [Vector2(-22, -126), Vector2(22, -126), Vector2(25, -104), Vector2(14, -82), Vector2(0, -74), Vector2(-14, -82), Vector2(-25, -104)], skin)
+	_pl(base, k, [Vector2(-25, -104), Vector2(-14, -82), Vector2(0, -74), Vector2(0, -92), Vector2(-14, -100)], skin_d)
+	# cabelo preto penteado para trás, com bico de viúva
+	_pl(base, k, [Vector2(-27, -108), Vector2(-26, -138), Vector2(-6, -152), Vector2(20, -146), Vector2(28, -126), Vector2(25, -108), Vector2(14, -122), Vector2(0, -111), Vector2(-14, -122)], Color(0.015, 0.0, 0.02, a))
+	# sobrancelhas, nariz, boca com presas
+	for side in [-1.0, 1.0]:
+		_ln(Vector2(side * 4.0, -116), Vector2(side * 17.0, -111), base, k, Color(0.02, 0.0, 0.03, a), 3.0)
+	_ln(Vector2(0, -104), Vector2(0, -95), base, k, skin_d, 3.0)
+	_ln(Vector2(-9, -86), Vector2(9, -86), base, k, Color(0.25, 0.02, 0.06, a), 3.0)
+	for side in [-1.0, 1.0]:
+		_pl(base, k, [Vector2(side * 4.0, -86), Vector2(side * 8.5, -86), Vector2(side * 6.0, -76)], Color(0.96, 0.94, 0.90, a))
+	for side in [-1.0, 1.0]:
+		var ep: Vector2 = base + Vector2(side * 9.0, -107.0) * k
+		_glow(ep, 20.0 * k * eye, Color(1.0, 0.0, 0.1, 0.8 * a))
+		_pl(base, k, [Vector2(side * 4.0, -108.5), Vector2(side * 15.0, -110.5), Vector2(side * 5.0, -104.0)], Color(1.0, 0.42, 0.40, a))
 
 
 func _crack_line(base: Vector2, k: float, pts: Array, progress: float, a: float) -> void:
@@ -693,6 +854,12 @@ func _scene_fall() -> void:
 	var cs: float = 20.0 + sin(_total * 1.5) * 10.0 + crack * 26.0 * sin(_total * 9.0)
 	var chest: Vector2 = base + jitter + Vector2(0.0, -30.0) * k
 
+	# Os tiros do Lobo (cada um abre mais a rachadura em Drácula).
+	var fire: float = 0.0
+	for st in [0.9, 1.9, 2.9, 3.9]:
+		fire = maxf(fire, 1.0 - absf(t - float(st)) / 0.2)
+	fire = clampf(fire, 0.0, 1.0)
+
 	# Aura e raios de energia escapando de dentro
 	_glow(chest, (260.0 + 320.0 * crack) * k * 0.8, Color(1.0, 0.10, 0.15, (0.20 + 0.40 * crack) * alive))
 	for i in 14:
@@ -707,7 +874,7 @@ func _scene_fall() -> void:
 	# Rachaduras de luz percorrendo o corpo
 	if alive > 0.05:
 		var b: Vector2 = base + jitter
-		_crack_line(b, k, [Vector2(0, -110), Vector2(-8, -80), Vector2(8, -50), Vector2(-6, -15), Vector2(6, 25), Vector2(-4, 70), Vector2(2, 130)], crack, alive)
+		_crack_line(b, k, [Vector2(0, -72), Vector2(-8, -56), Vector2(8, -38), Vector2(-6, -15), Vector2(6, 25), Vector2(-4, 70), Vector2(2, 130)], crack, alive)
 		_crack_line(b, k, [Vector2(-10, -60), Vector2(-50, -40), Vector2(-70, -5), Vector2(-120, 30), Vector2(-150, 90)], clampf(crack * 1.2 - 0.2, 0.0, 1.0), alive)
 		_crack_line(b, k, [Vector2(10, -55), Vector2(55, -45), Vector2(80, -10), Vector2(130, 20), Vector2(165, 80)], clampf(crack * 1.2 - 0.3, 0.0, 1.0), alive)
 		_crack_line(b, k, [Vector2(-100, -90), Vector2(-150, -100), Vector2(-200, -60)], clampf(crack * 1.4 - 0.6, 0.0, 1.0), alive)
@@ -751,8 +918,117 @@ func _scene_fall() -> void:
 		_glow_ellipse(Vector2(cx, py + 8.0), 270.0 * pile, 26.0 * pile, Color(0, 0, 0, 0.6))
 		draw_colored_polygon(PackedVector2Array([
 			Vector2(cx - 210.0 * pile, py + 10.0), Vector2(cx - 90.0 * pile, py - 30.0 * pile), Vector2(cx, py - 48.0 * pile),
-			Vector2(cx + 100.0 * pile, py - 26.0 * pile), Vector2(cx + 220.0 * pile, py + 10.0)]), Color(0.16, 0.14, 0.17))
+			Vector2(cx + 100.0 * pile, py - 26.0 * pile), Vector2(cx + 220.0 * pile, py + 10.0)]), Color(0.20, 0.17, 0.21))
 		_glow(Vector2(cx, py - 22.0), 130.0 * pile, Color(1.0, 0.2, 0.1, 0.26 * (1.0 - _smooth((t - 8.0) / 3.0))))
+
+	# O Lobo, de pé e ferido, diante de Drácula.
+	var wb := Vector2(maxf(cx - 560.0, 260.0), 985.0)
+	_wolf_stand(wb, 0.95, fire)
+	if fire > 0.05 and alive > 0.05:
+		draw_line(wb + Vector2(318.0, -407.0) * 0.95, chest, Color(1.0, 0.92, 0.65, 0.75 * fire), 3.0, true)
+		_glow(chest, 90.0 * fire, Color(1.0, 0.75, 0.40, 0.7 * fire))
+
+
+## Silhueta do Lobo de pé, de perfil, olhando para a direita (para Drácula), com o .38 lendário em punho.
+## Usada no plano 1: Drácula se parte "diante do Lobo". fire (0..1) = clarão do tiro.
+func _wolf_stand(base: Vector2, s: float, fire: float) -> void:
+	var fur: Color = FUR_D.lightened(0.10)
+	var fur_d: Color = FUR_DD.lightened(0.04)
+	var rim := Color(1.0, 0.50, 0.58, 0.60)
+	var cloak := Color(0.085, 0.07, 0.12)
+	var by := Vector2(0.0, sin(_total * 2.2) * 4.0)
+
+	_glow_ellipse(base + Vector2(30.0, 8.0) * s, 260.0 * s, 26.0 * s, Color(0, 0, 0, 0.55))
+
+	# Capa rasgada que sobrou do caçador, caindo pelas costas.
+	var cape_pts: Array = [Vector2(-40, -432) + by, Vector2(-160, -394) + by, Vector2(-250, -300) + by, Vector2(-292, -190), Vector2(-304, -96)]
+	cape_pts.append_array(_hem(Vector2(-304, -96), Vector2(-150, -26), 7, 24.0))
+	cape_pts.append_array([Vector2(-92, -150), Vector2(-84, -272) + by])
+	_gpoly(_xf(cape_pts, base, s), cloak.lightened(0.10), cloak.darkened(0.30))
+	for i in 4:
+		var fx: float = -110.0 - float(i) * 52.0
+		_ln(Vector2(-70.0, -300.0) + by, Vector2(fx - 20.0, -60.0 - float(i) * 6.0), base, s, Color(0, 0, 0, 0.35), 5.0)
+	draw_polyline(_xf([Vector2(-40, -432) + by, Vector2(-160, -394) + by, Vector2(-250, -300) + by, Vector2(-292, -190)], base, s), Color(0.75, 0.45, 0.60, 0.45), 3.0 * s, true)
+
+	# Cauda volumosa
+	_gpoly(_xf([Vector2(-60, -250) + by, Vector2(-170, -232) + by, Vector2(-252, -160) + by,
+		Vector2(-236, -92) + by, Vector2(-190, -166) + by, Vector2(-120, -204) + by, Vector2(-60, -196) + by], base, s), fur, fur_d)
+
+	# Pernas e patas com garras
+	_limb_l(base, s, Vector2(-25, -220) + by, Vector2(-60, -110), 62.0, fur_d)
+	_limb_l(base, s, Vector2(-60, -110), Vector2(-40, -14), 46.0, fur_d)
+	_limb_l(base, s, Vector2(25, -220) + by, Vector2(70, -110), 62.0, fur)
+	_limb_l(base, s, Vector2(70, -110), Vector2(92, -14), 46.0, fur)
+	_pl(base, s, [Vector2(-64, -24), Vector2(-4, -18), Vector2(8, 0), Vector2(-66, 0)], fur_d)
+	_pl(base, s, [Vector2(70, -24), Vector2(128, -18), Vector2(142, 0), Vector2(66, 0)], fur)
+	for i in 3:
+		var co: float = float(i) * 22.0
+		_pl(base, s, [Vector2(112 + co, -6), Vector2(148 + co * 0.6, 0), Vector2(112 + co, 0)], BONE)
+		_pl(base, s, [Vector2(-20 + co, -6), Vector2(14 + co * 0.6, 0), Vector2(-20 + co, 0)], BONE.darkened(0.2))
+
+	# Tronco com as costas arqueadas
+	var torso: Array = [Vector2(-70, -200) + by, Vector2(-92, -300) + by, Vector2(-60, -400) + by, Vector2(0, -450) + by,
+		Vector2(70, -440) + by, Vector2(100, -370) + by, Vector2(90, -280) + by, Vector2(70, -200) + by]
+	_gpoly(_xf(torso, base, s), fur.lightened(0.06), fur_d)
+	_pl(base, s, [Vector2(36, -390) + by, Vector2(88, -372) + by, Vector2(86, -290) + by, Vector2(54, -236) + by, Vector2(36, -268) + by], Color(0.30, 0.16, 0.42, 0.85))
+	for i in 7:
+		var u: float = float(i) / 6.0
+		var tp: Vector2 = Vector2(-92.0, -300.0).lerp(Vector2(0.0, -450.0), u) + by
+		_pl(base, s, [tp, tp + Vector2(-30, -10), tp + Vector2(-4, -38)], fur)
+	for i in 5:
+		var u2: float = float(i) / 4.0
+		var cp: Vector2 = Vector2(78.0, -440.0).lerp(Vector2(90.0, -290.0), u2) + by
+		_pl(base, s, [cp, cp + Vector2(26, 8), cp + Vector2(4, 32)], fur)
+	draw_polyline(_xf([Vector2(70, -440) + by, Vector2(100, -370) + by, Vector2(90, -280) + by, Vector2(70, -200) + by], base, s), rim, 4.0 * s, true)
+	draw_polyline(_xf([Vector2(-60, -400) + by, Vector2(0, -450) + by, Vector2(70, -440) + by], base, s), Color(0.72, 0.68, 1.0, 0.45), 3.0 * s, true)
+
+	# Braço estendido para Drácula com o .38 lendário
+	var shoulder := Vector2(60, -395) + by
+	var elbow := Vector2(150, -372) + by
+	var hand := Vector2(232, -388) + by
+	_limb_l(base, s, shoulder, elbow, 52.0, fur)
+	_limb_l(base, s, elbow, hand, 44.0, fur)
+	draw_polyline(_xf([shoulder + Vector2(0, -26), elbow + Vector2(0, -22), hand + Vector2(0, -20)], base, s), rim, 3.0 * s, true)
+	for i in 3:
+		var co2: float = float(i) * 12.0 - 12.0
+		_pl(base, s, [hand + Vector2(10, co2 - 6), hand + Vector2(34, co2 + 2), hand + Vector2(10, co2 + 6)], BONE)
+	var gun_c := Color(0.30, 0.31, 0.38)
+	_pl(base, s, [hand + Vector2(8, -22), hand + Vector2(84, -26), hand + Vector2(86, -12), hand + Vector2(16, 4)], gun_c)
+	_pl(base, s, [hand + Vector2(0, -18), hand + Vector2(26, -30), hand + Vector2(30, -4), hand + Vector2(4, 4)], gun_c.darkened(0.25))
+	_pl(base, s, [hand + Vector2(8, -2), hand + Vector2(30, -2), hand + Vector2(22, 36), hand + Vector2(2, 34)], Color(0.33, 0.14, 0.09))
+	_ln(hand + Vector2(10, -24), hand + Vector2(84, -27), base, s, Color(1.0, 0.82, 0.45, 0.95), 3.0)
+	_glow(base + (hand + Vector2(60, -14)) * s, 54.0 * s, Color(1.0, 0.78, 0.35, 0.22 + 0.06 * sin(_total * 3.0)))
+
+	# Cabeça de lobo rosnando, olho dourado
+	var hp := Vector2(106, -468) + by
+	_pl(base, s, [hp + Vector2(-34, -28), hp + Vector2(-48, -112), hp + Vector2(10, -50)], fur_d)
+	_pl(base, s, [hp + Vector2(-30, -36), hp + Vector2(-40, -96), hp + Vector2(2, -52)], Color(0.50, 0.22, 0.38))
+	_pl(base, s, [hp + Vector2(8, -48), hp + Vector2(50, -114), hp + Vector2(50, -34)], fur)
+	_pl(base, s, [hp + Vector2(14, -50), hp + Vector2(44, -100), hp + Vector2(44, -42)], Color(0.50, 0.22, 0.38))
+	draw_circle(base + hp * s, 46.0 * s, fur)
+	for i in 3:
+		var ck: Vector2 = hp + Vector2(-28.0 + float(i) * 8.0, 30.0 + float(i) * 6.0)
+		_pl(base, s, [ck, ck + Vector2(-26, 14), ck + Vector2(4, 22)], fur)
+	_pl(base, s, [hp + Vector2(30, -14), hp + Vector2(134, 16), hp + Vector2(128, 38), hp + Vector2(26, 28)], fur)
+	var open: float = 6.0 + 4.0 * sin(_total * 3.0) + fire * 10.0
+	_pl(base, s, [hp + Vector2(24, 26), hp + Vector2(122, 38 + open), hp + Vector2(100, 62 + open), hp + Vector2(18, 50)], fur_d)
+	_pl(base, s, [hp + Vector2(30, 28), hp + Vector2(120, 38 + open * 0.8), hp + Vector2(110, 40 + open * 0.8), hp + Vector2(34, 36)], Color(0.45, 0.04, 0.10))
+	for i in 4:
+		var tx: float = 62.0 + float(i) * 15.0
+		_pl(base, s, [hp + Vector2(tx, 30 + open * 0.2), hp + Vector2(tx + 8, 30 + open * 0.2), hp + Vector2(tx + 4, 44 + open * 0.5)], BONE)
+	draw_circle(base + (hp + Vector2(134, 18)) * s, 9.0 * s, Color(0.02, 0.01, 0.04))
+	_ln(hp + Vector2(30, -14), hp + Vector2(132, 16), base, s, rim, 3.0)
+	var ep: Vector2 = base + (hp + Vector2(58, -8)) * s
+	var pulse: float = 0.75 + 0.2 * sin(_total * 4.0)
+	_glow(ep, 62.0 * s, Color(1.0, 0.70, 0.10, 0.34 * pulse))
+	_glow(ep, 24.0 * s, Color(1.0, 0.92, 0.45, 0.70 * pulse))
+	_pl(base, s, [hp + Vector2(40, -14), hp + Vector2(78, -4), hp + Vector2(46, 4)], Color(1.0, 0.92, 0.45))
+
+	# Clarão do tiro
+	if fire > 0.02:
+		var mz: Vector2 = base + (hand + Vector2(88, -19)) * s
+		_glow(mz, 150.0 * s * fire, Color(1.0, 0.82, 0.45, 0.85 * fire))
+		_pl(mz, s * (0.5 + fire), [Vector2(0, -10), Vector2(64, -38), Vector2(30, -4), Vector2(104, 0), Vector2(30, 6), Vector2(64, 38), Vector2(0, 10)], Color(1.0, 0.96, 0.75, fire))
 
 
 # ==============================================================================
@@ -760,28 +1036,38 @@ func _scene_fall() -> void:
 # ==============================================================================
 
 func _win(pos: Vector2, w: float, h: float, lit: float, sd: float) -> void:
-	draw_rect(Rect2(pos.x - w * 0.5, pos.y - h, w, h), Color(0.02, 0.012, 0.03))
+	var dark := Color(0.02, 0.012, 0.03)
+	var apex: float = w * 0.85
+	draw_rect(Rect2(pos.x - w * 0.5, pos.y - h, w, h), dark)
+	draw_colored_polygon(PackedVector2Array([Vector2(pos.x - w * 0.5, pos.y - h), Vector2(pos.x, pos.y - h - apex), Vector2(pos.x + w * 0.5, pos.y - h)]), dark)
 	if lit > 0.02:
 		var fl: float = 0.75 + 0.25 * sin(_total * 7.0 + sd * 5.0)
-		draw_rect(Rect2(pos.x - w * 0.5 + 2.0, pos.y - h + 2.0, w - 4.0, h - 4.0), Color(1.0, 0.15, 0.18, 0.95 * fl * lit))
+		var lc := Color(1.0, 0.15, 0.18, 0.95 * fl * lit)
+		draw_rect(Rect2(pos.x - w * 0.5 + 2.0, pos.y - h + 2.0, w - 4.0, h - 4.0), lc)
+		draw_colored_polygon(PackedVector2Array([Vector2(pos.x - w * 0.5 + 2.0, pos.y - h + 2.0), Vector2(pos.x, pos.y - h - apex + 4.0), Vector2(pos.x + w * 0.5 - 2.0, pos.y - h + 2.0)]), lc)
 		_glow(pos + Vector2(0.0, -h * 0.5), maxf(w * 3.0, 14.0), Color(1.0, 0.15, 0.18, 0.30 * fl * lit))
 
 
 func _castle(base: Vector2, s: float, lit: float) -> void:
 	var cx: float = base.x
 	var by: float = base.y
-	var wall := Color(0.05, 0.038, 0.08)
-	var roof := Color(0.028, 0.02, 0.05)
-	var rim := Color(0.60, 0.55, 0.88, 0.45).lerp(Color(1.0, 0.25, 0.30, 0.6), lit)
+	var wall := Color(0.095, 0.075, 0.15)
+	var roof := Color(0.045, 0.035, 0.085)
+	var rim := Color(0.60, 0.55, 0.88, 0.55).lerp(Color(1.0, 0.25, 0.30, 0.65), lit)
 
-	draw_colored_polygon(PackedVector2Array([
-		Vector2(cx - 760.0 * s, 1500.0), Vector2(cx - 690.0 * s, by + 150.0 * s), Vector2(cx - 540.0 * s, by + 70.0 * s),
-		Vector2(cx - 400.0 * s, by + 18.0 * s), Vector2(cx + 400.0 * s, by + 18.0 * s), Vector2(cx + 560.0 * s, by + 80.0 * s),
-		Vector2(cx + 700.0 * s, by + 160.0 * s), Vector2(cx + 760.0 * s, 1500.0)]), Color(0.025, 0.02, 0.045))
+	# Penhasco rochoso sob o castelo
+	_gpoly(PackedVector2Array([
+		Vector2(cx - 800.0 * s, 1500.0), Vector2(cx - 720.0 * s, by + 190.0 * s), Vector2(cx - 600.0 * s, by + 120.0 * s), Vector2(cx - 540.0 * s, by + 60.0 * s),
+		Vector2(cx - 470.0 * s, by + 70.0 * s), Vector2(cx - 400.0 * s, by + 18.0 * s), Vector2(cx + 400.0 * s, by + 18.0 * s), Vector2(cx + 470.0 * s, by + 66.0 * s),
+		Vector2(cx + 540.0 * s, by + 56.0 * s), Vector2(cx + 610.0 * s, by + 124.0 * s), Vector2(cx + 720.0 * s, by + 190.0 * s), Vector2(cx + 800.0 * s, 1500.0)]),
+		Color(0.075, 0.06, 0.11), Color(0.02, 0.016, 0.035))
 
-	draw_rect(Rect2(cx - 400.0 * s, by - 170.0 * s, 800.0 * s, 190.0 * s), wall)
+	# Muralha com ameias e fiadas de pedra
+	_gpoly(PackedVector2Array([Vector2(cx - 400.0 * s, by - 170.0 * s), Vector2(cx + 400.0 * s, by - 170.0 * s), Vector2(cx + 400.0 * s, by + 20.0 * s), Vector2(cx - 400.0 * s, by + 20.0 * s)]), wall.lightened(0.05), wall.darkened(0.30))
 	for i in 22:
-		draw_rect(Rect2(cx - 400.0 * s + float(i) * 38.0 * s, by - 196.0 * s, 22.0 * s, 28.0 * s), wall)
+		draw_rect(Rect2(cx - 400.0 * s + float(i) * 38.0 * s, by - 196.0 * s, 22.0 * s, 28.0 * s), wall.lightened(0.03))
+	for r in 4:
+		draw_line(Vector2(cx - 400.0 * s, by - (130.0 - float(r) * 38.0) * s), Vector2(cx + 400.0 * s, by - (130.0 - float(r) * 38.0) * s), Color(0, 0, 0, 0.22), 2.0 * s)
 
 	var towers: Array = [[-340.0, 110.0, 330.0, 470.0], [340.0, 110.0, 330.0, 470.0], [-175.0, 92.0, 420.0, 570.0], [175.0, 92.0, 420.0, 570.0]]
 	var idx: float = 0.0
@@ -791,17 +1077,26 @@ func _castle(base: Vector2, s: float, lit: float) -> void:
 		var th: float = tw[2] * s
 		var ta: float = tw[3] * s
 		var x: float = cx + tx * s
-		draw_rect(Rect2(x - w * 0.5, by - th, w, th + 24.0 * s), wall)
-		draw_colored_polygon(PackedVector2Array([Vector2(x - w * 0.5 - 14.0 * s, by - th), Vector2(x, by - ta), Vector2(x + w * 0.5 + 14.0 * s, by - th)]), roof)
+		_gpoly(PackedVector2Array([Vector2(x - w * 0.5, by - th), Vector2(x + w * 0.5, by - th), Vector2(x + w * 0.5, by + 24.0 * s), Vector2(x - w * 0.5, by + 24.0 * s)]), wall.lightened(0.07), wall.darkened(0.32))
+		# Galeria de ameias sob o telhado
+		draw_rect(Rect2(x - w * 0.5 - 8.0 * s, by - th - 10.0 * s, w + 16.0 * s, 16.0 * s), wall.darkened(0.1))
+		draw_colored_polygon(PackedVector2Array([Vector2(x - w * 0.5 - 14.0 * s, by - th - 8.0 * s), Vector2(x, by - ta), Vector2(x + w * 0.5 + 14.0 * s, by - th - 8.0 * s)]), roof)
 		draw_line(Vector2(x - w * 0.5, by - th), Vector2(x - w * 0.5, by), rim, 3.0 * s, true)
+		draw_line(Vector2(x, by - ta), Vector2(x - w * 0.5 - 14.0 * s, by - th - 8.0 * s), rim, 2.0 * s, true)
+		# Bandeira ao vento
+		var fw: float = sin(_total * 3.0 + idx) * 6.0 * s
+		draw_line(Vector2(x, by - ta), Vector2(x, by - ta - 46.0 * s), roof, 3.0 * s)
+		draw_colored_polygon(PackedVector2Array([Vector2(x, by - ta - 46.0 * s), Vector2(x + 40.0 * s, by - ta - 38.0 * s + fw), Vector2(x + 28.0 * s, by - ta - 32.0 * s), Vector2(x + 44.0 * s, by - ta - 22.0 * s + fw), Vector2(x, by - ta - 26.0 * s)]), Color(0.30, 0.03, 0.08).lerp(Color(0.12, 0.05, 0.10), 1.0 - lit))
 		_win(Vector2(x, by - th * 0.62), 16.0 * s, 38.0 * s, lit, idx)
 		_win(Vector2(x, by - th * 0.30), 14.0 * s, 32.0 * s, lit, idx + 1.0)
 		idx += 1.0
 
-	draw_rect(Rect2(cx - 105.0 * s, by - 470.0 * s, 210.0 * s, 490.0 * s), wall.lightened(0.04))
+	# Torre de menagem
+	_gpoly(PackedVector2Array([Vector2(cx - 105.0 * s, by - 470.0 * s), Vector2(cx + 105.0 * s, by - 470.0 * s), Vector2(cx + 105.0 * s, by + 20.0 * s), Vector2(cx - 105.0 * s, by + 20.0 * s)]), wall.lightened(0.12), wall.darkened(0.25))
 	draw_colored_polygon(PackedVector2Array([Vector2(cx - 125.0 * s, by - 470.0 * s), Vector2(cx, by - 700.0 * s), Vector2(cx + 125.0 * s, by - 470.0 * s)]), roof)
 	draw_line(Vector2(cx - 105.0 * s, by - 470.0 * s), Vector2(cx - 105.0 * s, by), rim, 3.0 * s, true)
 	draw_line(Vector2(cx, by - 700.0 * s), Vector2(cx, by - 775.0 * s), roof, 4.0 * s)
+	draw_line(Vector2(cx - 125.0 * s, by - 470.0 * s), Vector2(cx, by - 700.0 * s), rim, 2.0 * s, true)
 
 	var rc := Vector2(cx, by - 360.0 * s)
 	if lit > 0.02:
@@ -817,9 +1112,15 @@ func _castle(base: Vector2, s: float, lit: float) -> void:
 			continue
 		_win(Vector2(cx - 300.0 * s + float(i) * 86.0 * s, by - 60.0 * s), 16.0 * s, 44.0 * s, lit, float(i) * 2.0)
 
+	# Portão em arco
 	draw_colored_polygon(PackedVector2Array([
 		Vector2(cx - 52.0 * s, by + 20.0 * s), Vector2(cx - 52.0 * s, by - 60.0 * s), Vector2(cx - 30.0 * s, by - 100.0 * s),
 		Vector2(cx + 30.0 * s, by - 100.0 * s), Vector2(cx + 52.0 * s, by - 60.0 * s), Vector2(cx + 52.0 * s, by + 20.0 * s)]), Color(0.01, 0.006, 0.015))
+	for i in 5:
+		draw_line(Vector2(cx - 40.0 * s + float(i) * 20.0 * s, by - 96.0 * s), Vector2(cx - 40.0 * s + float(i) * 20.0 * s, by + 18.0 * s), Color(0.12, 0.10, 0.16), 2.0 * s)
+
+	# Névoa na base
+	_glow_ellipse(Vector2(cx, by + 30.0 * s), 520.0 * s, 60.0 * s, Color(0.55, 0.50, 0.75, 0.16).lerp(Color(1.0, 0.3, 0.3, 0.12), lit))
 
 
 func _scene_curse() -> void:
@@ -864,7 +1165,7 @@ func _scene_curse() -> void:
 		_bat(Vector2(cx - 120.0, 420.0) + Vector2(cos(ang), sin(ang)) * dist, 0.5 + _hsh(fi * 6.3) * 0.7, fi, Color(0.01, 0.0, 0.01))
 
 	_clouds(930.0, Color(0.45, 0.30, 0.50, 0.14), 14.0, 7, 12.0)
-	_pine_row(990.0, 110.0, 380.0, 200.0, Color(0.006, 0.006, 0.014), 7.0)
+	_pine_row(1000.0, 100.0, 170.0, 120.0, Color(0.006, 0.006, 0.014), 7.0)
 	_draw_mist(1000.0, Color(0.55, 0.50, 0.75, 0.10))
 
 	# Brasas subindo, perdendo o vermelho
@@ -878,19 +1179,40 @@ func _scene_curse() -> void:
 
 
 # ==============================================================================
-# PLANO 3: O LOBO VOLTA A SER CAÇADOR
+# PLANO 3: A FERA DESCANSA, A LENDA SE ESCONDE
 # ==============================================================================
 
-## Pose ajoelhada, de perfil, olhando para a direita. wolf = true: forma de lobo; false: caçador.
+## Pose ajoelhada, de perfil, olhando para a direita. wolf = true: forma de lobo; false: a lenda coberta de capa e chapéu.
 ## tint (0..1) clareia o corpo em direção a um branco-roxo (usado na transformação).
 func _kneel(base: Vector2, s: float, wolf: bool, tint: float, breath: float, eye: float) -> void:
-	var flash_c := Color(0.85, 0.75, 1.0)
-	var body_c: Color = (FUR_D if wolf else COAT).lerp(flash_c, tint)
-	var dark_c: Color = (FUR_DD if wolf else COAT_D).lerp(flash_c, tint * 0.85)
-	var rim_c: Color = (Color(0.72, 0.68, 1.0, 0.7) if wolf else Color(0.82, 0.80, 0.95, 0.55))
 	var by := Vector2(0.0, breath)
-
 	_glow_ellipse(base + Vector2(40.0, 8.0) * s, 300.0 * s, 32.0 * s, Color(0, 0, 0, 0.55))
+	if wolf:
+		_kneel_wolf(base, s, tint, by, eye)
+	else:
+		_kneel_legend(base, s, tint, by, eye)
+
+
+## Lobo ferido de joelhos. A capa rasgada ainda está nas costas e o chapéu caiu no chão ao lado.
+func _kneel_wolf(base: Vector2, s: float, tint: float, by: Vector2, eye: float) -> void:
+	var flash_c := Color(0.85, 0.75, 1.0)
+	var body_c: Color = FUR_D.lightened(0.10).lerp(flash_c, tint)
+	var dark_c: Color = FUR_DD.lightened(0.05).lerp(flash_c, tint * 0.85)
+	var rim_c := Color(0.72, 0.68, 1.0, 0.7)
+	var cloak: Color = Color(0.095, 0.08, 0.135).lerp(flash_c, tint * 0.8)
+
+	# Chapéu caído no chão
+	var hat_c: Color = Color(0.06, 0.05, 0.09).lerp(flash_c, tint * 0.8)
+	_pl(base, s, [Vector2(-352, -8), Vector2(-318, -26), Vector2(-262, -28), Vector2(-226, -10), Vector2(-262, 2), Vector2(-320, 2)], hat_c)
+	_pl(base, s, [Vector2(-312, -26), Vector2(-306, -62), Vector2(-278, -66), Vector2(-266, -28)], hat_c.lightened(0.05))
+	_ln(Vector2(-311, -34), Vector2(-267, -35), base, s, Color(0.34, 0.05, 0.09), 9.0)
+
+	# Capa rasgada nas costas
+	var cape: Array = [Vector2(-80, -300) + by, Vector2(-160, -262) + by, Vector2(-206, -160), Vector2(-226, -50)]
+	cape.append_array(_hem(Vector2(-226, -50), Vector2(-96, -4), 6, 18.0))
+	cape.append_array([Vector2(-96, -90)])
+	_gpoly(_xf(cape, base, s), cloak.lightened(0.08), cloak.darkened(0.30))
+	draw_polyline(_xf([Vector2(-80, -300) + by, Vector2(-160, -262) + by, Vector2(-206, -160)], base, s), rim_c, 3.0 * s, true)
 
 	# Pernas (uma no chão, outra dobrada à frente) e braço de apoio
 	_limb_l(base, s, Vector2(-90, -100), Vector2(-40, -30), 70.0, dark_c)
@@ -907,7 +1229,7 @@ func _kneel(base: Vector2, s: float, wolf: bool, tint: float, breath: float, eye
 	var torso: Array = []
 	for pnt in torso_src:
 		torso.append((pnt as Vector2) + by)
-	_pl(base, s, torso, body_c)
+	_gpoly(_xf(torso, base, s), body_c.lightened(0.06), dark_c.lerp(body_c, 0.3))
 	draw_polyline(_xf([Vector2(-135, -190) + by, Vector2(-90, -270) + by, Vector2(-10, -320) + by, Vector2(70, -325) + by], base, s), rim_c, 4.0 * s, true)
 
 	# Sangue
@@ -915,49 +1237,82 @@ func _kneel(base: Vector2, s: float, wolf: bool, tint: float, breath: float, eye
 		var fi: float = float(i)
 		draw_circle(base + (Vector2(-40.0 + fi * 28.0, -210.0 + sin(fi * 1.7) * 18.0) + by) * s, (4.0 + _hsh(fi + 2.0) * 4.0) * s, Color(0.40, 0.03, 0.12, 0.8 * (1.0 - tint)))
 
-	if wolf:
-		# Tufos de pelo nas costas
-		for i in 6:
-			var u: float = float(i) / 5.0
-			var tp: Vector2 = Vector2(-135.0, -190.0).lerp(Vector2(70.0, -325.0), u) + by
-			_pl(base, s, [tp, tp + Vector2(-28, -6), tp + Vector2(-4, -36)], body_c)
-		# Feridas
-		_ln(Vector2(-60, -250) + by, Vector2(0, -190) + by, base, s, _ca(WOUND, 0.95), 8.0)
-		_ln(Vector2(-40, -270) + by, Vector2(20, -214) + by, base, s, _ca(WOUND, 0.95), 7.0)
-		var drip: float = fposmod(_total * 0.35, 1.0)
-		_ln(Vector2(0, -190) + by, Vector2(0, -190 + 20 + 70 * drip) + by, base, s, Color(0.5, 0.03, 0.12, 0.8 * (1.0 - drip)), 4.0)
-		# Garras na mão de apoio
-		for i in 3:
-			var cxo: float = float(i) * 20.0
-			_pl(base, s, [Vector2(188 + cxo, -14), Vector2(214 + cxo, 10), Vector2(206 + cxo, -14)], BONE)
-		# Cabeça de lobo, baixa
-		var hp := Vector2(150, -285) + by
-		_pl(base, s, [hp + Vector2(-48, -30), hp + Vector2(-54, -108), hp + Vector2(0, -50)], dark_c)
-		_pl(base, s, [hp + Vector2(0, -50), hp + Vector2(30, -118), hp + Vector2(48, -44)], dark_c)
-		draw_circle(base + hp * s, 56.0 * s, body_c)
-		_pl(base, s, [hp + Vector2(30, -14), hp + Vector2(132, 30), hp + Vector2(124, 58), hp + Vector2(26, 46)], body_c)
-		_pl(base, s, [hp + Vector2(120, 22), hp + Vector2(138, 28), hp + Vector2(128, 40)], dark_c)
-		_ln(hp + Vector2(30, -14), hp + Vector2(132, 30), base, s, rim_c, 3.0)
-		_ln(hp + Vector2(96, 54), hp + Vector2(108, 82), base, s, Color(0.5, 0.03, 0.12, 0.8), 5.0)
-		# Olho amarelo que vai se apagando
-		var ep: Vector2 = base + (hp + Vector2(52, -6)) * s
-		var pulse: float = 0.7 + 0.2 * sin(_total * 4.0)
-		_glow(ep, 70.0 * s, Color(1.0, 0.70, 0.10, 0.30 * pulse * eye))
-		_glow(ep, 28.0 * s, Color(1.0, 0.90, 0.40, 0.65 * pulse * eye))
-		_pl(base, s, [hp + Vector2(36, -12), hp + Vector2(70, -4), hp + Vector2(42, 4)], Color(0.45, 0.22, 0.05).lerp(Color(1.0, 0.92, 0.45), eye))
-	else:
-		# Mão com o revólver caído no chão
-		draw_circle(base + Vector2(208, -22) * s, 24.0 * s, SKIN.darkened(0.35).lerp(flash_c, tint * 0.6))
-		_pl(base, s, [Vector2(212, -34), Vector2(282, -44), Vector2(286, -28), Vector2(216, -14)], Color(0.18, 0.19, 0.24))
-		# Ombro enfaixado
-		_ln(Vector2(-10, -300) + by, Vector2(50, -262) + by, base, s, Color(0.82, 0.80, 0.74), 16.0)
-		draw_circle(base + (Vector2(24, -282) + by) * s, 5.0 * s, Color(0.5, 0.05, 0.12))
-		# Cabeça baixa, chapéu e cachecol
-		var hp2 := Vector2(140, -292) + by
-		_pl(base, s, [hp2 + Vector2(-40, 20), hp2 + Vector2(40, 24), hp2 + Vector2(50, 58), hp2 + Vector2(-30, 62)], Color(0.35, 0.06, 0.10).lerp(flash_c, tint * 0.6))
-		draw_circle(base + (hp2 + Vector2(6, 8)) * s, 32.0 * s, SKIN.darkened(0.30).lerp(flash_c, tint * 0.6))
-		_pl(base, s, [hp2 + Vector2(-64, -2), hp2 + Vector2(-42, -48), hp2 + Vector2(22, -56), hp2 + Vector2(52, -10), hp2 + Vector2(84, 0), hp2 + Vector2(-72, 6)], COAT_D.lerp(flash_c, tint * 0.8))
-		draw_polyline(_xf([hp2 + Vector2(-42, -48), hp2 + Vector2(22, -56), hp2 + Vector2(52, -10), hp2 + Vector2(84, 0)], base, s), rim_c, 3.0 * s, true)
+	# Tufos de pelo nas costas
+	for i in 7:
+		var u: float = float(i) / 6.0
+		var tp: Vector2 = Vector2(-135.0, -190.0).lerp(Vector2(70.0, -325.0), u) + by
+		_pl(base, s, [tp, tp + Vector2(-28, -6), tp + Vector2(-4, -36)], body_c)
+	# Feridas
+	_ln(Vector2(-60, -250) + by, Vector2(0, -190) + by, base, s, _ca(WOUND, 0.95), 8.0)
+	_ln(Vector2(-40, -270) + by, Vector2(20, -214) + by, base, s, _ca(WOUND, 0.95), 7.0)
+	var drip: float = fposmod(_total * 0.35, 1.0)
+	_ln(Vector2(0, -190) + by, Vector2(0, -190 + 20 + 70 * drip) + by, base, s, Color(0.5, 0.03, 0.12, 0.8 * (1.0 - drip)), 4.0)
+	# Garras na mão de apoio
+	for i in 3:
+		var cxo: float = float(i) * 20.0
+		_pl(base, s, [Vector2(188 + cxo, -14), Vector2(214 + cxo, 10), Vector2(206 + cxo, -14)], BONE)
+
+	# Cabeça de lobo, baixa
+	var hp := Vector2(150, -285) + by
+	_pl(base, s, [hp + Vector2(-48, -30), hp + Vector2(-58, -112), hp + Vector2(0, -50)], dark_c)
+	_pl(base, s, [hp + Vector2(-42, -38), hp + Vector2(-50, -98), hp + Vector2(-6, -52)], Color(0.45, 0.20, 0.36).lerp(flash_c, tint))
+	_pl(base, s, [hp + Vector2(0, -50), hp + Vector2(32, -122), hp + Vector2(50, -44)], dark_c)
+	draw_circle(base + hp * s, 56.0 * s, body_c)
+	_pl(base, s, [hp + Vector2(30, -14), hp + Vector2(132, 30), hp + Vector2(124, 58), hp + Vector2(26, 46)], body_c)
+	_pl(base, s, [hp + Vector2(26, 44), hp + Vector2(124, 58), hp + Vector2(100, 80), hp + Vector2(20, 64)], dark_c)
+	for i in 3:
+		var tx: float = 70.0 + float(i) * 15.0
+		_pl(base, s, [hp + Vector2(tx, 50), hp + Vector2(tx + 8, 52), hp + Vector2(tx + 3, 64)], BONE)
+	draw_circle(base + (hp + Vector2(134, 30)) * s, 10.0 * s, Color(0.02, 0.01, 0.04))
+	_ln(hp + Vector2(30, -14), hp + Vector2(132, 30), base, s, rim_c, 3.0)
+	_ln(hp + Vector2(96, 54), hp + Vector2(108, 82), base, s, Color(0.5, 0.03, 0.12, 0.8), 5.0)
+	# Olho amarelo que vai se apagando
+	var ep: Vector2 = base + (hp + Vector2(52, -6)) * s
+	var pulse: float = 0.7 + 0.2 * sin(_total * 4.0)
+	_glow(ep, 70.0 * s, Color(1.0, 0.70, 0.10, 0.30 * pulse * eye))
+	_glow(ep, 28.0 * s, Color(1.0, 0.90, 0.40, 0.65 * pulse * eye))
+	_pl(base, s, [hp + Vector2(36, -12), hp + Vector2(70, -4), hp + Vector2(42, 4)], Color(0.45, 0.22, 0.05).lerp(Color(1.0, 0.92, 0.45), eye))
+
+
+## A lenda ajoelhada: só uma capa e um chapéu, sem rosto nem pele à mostra.
+## glint (0..1) = brilho dourado do olhar sob a aba, que se apaga quando ele jura esconder o fardo.
+func _kneel_legend(base: Vector2, s: float, tint: float, by: Vector2, glint: float) -> void:
+	var flash_c := Color(0.85, 0.75, 1.0)
+	var cape_c: Color = Color(0.15, 0.125, 0.205).lerp(flash_c, tint)
+	var cape_d: Color = Color(0.06, 0.05, 0.095).lerp(flash_c, tint * 0.85)
+	var rim_c := Color(0.82, 0.80, 0.95, 0.65)
+
+	# Massa da capa cobrindo o corpo ajoelhado, com a barra no chão
+	var outline: Array = [Vector2(-218, -6), Vector2(-226, -72), Vector2(-198, -164) + by, Vector2(-140, -252) + by, Vector2(-70, -322) + by,
+		Vector2(8, -348) + by, Vector2(84, -330) + by, Vector2(124, -272) + by, Vector2(136, -192) + by, Vector2(176, -112), Vector2(236, -42), Vector2(250, -6)]
+	outline.append_array(_hem(Vector2(250, -6), Vector2(-218, -6), 13, 18.0))
+	_gpoly(_xf(outline, base, s), cape_c.lightened(0.05), cape_d)
+	# Dobras
+	for i in 6:
+		var fx: float = -170.0 + float(i) * 62.0
+		_ln(Vector2(-20.0 + float(i) * 12.0, -310.0) + by, Vector2(fx, -12.0), base, s, Color(0, 0, 0, 0.30), 5.0)
+	_pl(base, s, [Vector2(-110, -210) + by, Vector2(-30, -250) + by, Vector2(10, -150), Vector2(-60, -60), Vector2(-150, -50)], Color(0, 0, 0, 0.16))
+	draw_polyline(_xf([Vector2(-226, -72), Vector2(-198, -164) + by, Vector2(-140, -252) + by, Vector2(-70, -322) + by, Vector2(8, -348) + by, Vector2(84, -330) + by], base, s), rim_c, 4.0 * s, true)
+	draw_polyline(_xf([Vector2(136, -192) + by, Vector2(176, -112), Vector2(236, -42)], base, s), rim_c, 3.0 * s, true)
+
+	# Braço coberto pela capa apoiado no chão, mão de luva escura e o .38 caído
+	_limb_l(base, s, Vector2(70, -250) + by, Vector2(150, -130), 54.0, cape_c)
+	_limb_l(base, s, Vector2(150, -130), Vector2(205, -34), 46.0, cape_c.darkened(0.1))
+	draw_circle(base + Vector2(208, -22) * s, 23.0 * s, Color(0.06, 0.045, 0.05).lerp(flash_c, tint * 0.6))
+	_pl(base, s, [Vector2(214, -36), Vector2(284, -46), Vector2(288, -30), Vector2(218, -14)], Color(0.28, 0.29, 0.36))
+	_pl(base, s, [Vector2(216, -20), Vector2(240, -22), Vector2(232, 8), Vector2(212, 4)], Color(0.30, 0.12, 0.08))
+
+	# Gola alta da capa e chapéu de aba larga baixado sobre o rosto (só sombra por baixo)
+	var hp := Vector2(112, -262) + by
+	_pl(base, s, [hp + Vector2(-78, 34), hp + Vector2(44, 50), hp + Vector2(76, 124), hp + Vector2(-96, 138)], cape_d)
+	_pl(base, s, [hp + Vector2(-44, 24), hp + Vector2(56, 32), hp + Vector2(60, 90), hp + Vector2(-34, 96)], Color(0.012, 0.008, 0.02))
+	if glint > 0.02:
+		for gx in [8.0, 38.0]:
+			var gp: Vector2 = base + (hp + Vector2(gx, 56.0)) * s
+			_glow(gp, 24.0 * s, Color(1.0, 0.75, 0.15, 0.55 * glint))
+			draw_circle(gp, 3.4 * s, Color(1.0, 0.92, 0.5, glint))
+	var hat_c: Color = Color(0.085, 0.07, 0.115).lerp(flash_c, tint * 0.8)
+	_hat(base, s, hp, 1.35, 12.0, hat_c, rim_c)
 
 
 func _scene_transform() -> void:
@@ -969,7 +1324,7 @@ func _scene_transform() -> void:
 	var py: float = 945.0
 	draw_colored_polygon(PackedVector2Array([
 		Vector2(cx + 300.0, py + 10.0), Vector2(cx + 380.0, py - 22.0), Vector2(cx + 450.0, py - 34.0),
-		Vector2(cx + 520.0, py - 18.0), Vector2(cx + 590.0, py + 10.0)]), Color(0.13, 0.12, 0.15))
+		Vector2(cx + 520.0, py - 18.0), Vector2(cx + 590.0, py + 10.0)]), Color(0.20, 0.19, 0.24))
 
 	var morph: float = _smooth((t - 3.5) / 4.5)
 	var breath: float = sin(_total * 2.2) * (6.0 - 3.0 * morph)
@@ -978,17 +1333,18 @@ func _scene_transform() -> void:
 	# Facho de luar sobre o lobo
 	draw_polygon(
 		PackedVector2Array([Vector2(cx - 90.0, 640.0), Vector2(cx + 90.0, 640.0), Vector2(base.x + 260.0, 960.0), Vector2(base.x - 260.0, 960.0)]),
-		PackedColorArray([Color(0.6, 0.66, 1.0, 0.09), Color(0.6, 0.66, 1.0, 0.09), Color(0.6, 0.66, 1.0, 0.03), Color(0.6, 0.66, 1.0, 0.03)]))
+		PackedColorArray([Color(0.6, 0.66, 1.0, 0.11), Color(0.6, 0.66, 1.0, 0.11), Color(0.6, 0.66, 1.0, 0.04), Color(0.6, 0.66, 1.0, 0.04)]))
 
 	# Aura roxa durante a transformação
 	var aura: float = sin(clampf(morph, 0.0, 1.0) * PI)
 	_glow(base + Vector2(30.0, -170.0), 380.0, Color(0.60, 0.30, 1.0, 0.38 * aura))
 
-	# Troca de forma sob o clarão: lobo -> caçador
+	# Troca de forma sob o clarão: lobo -> a lenda coberta de capa e chapéu
 	if morph < 0.5:
 		_kneel(base, 1.0, true, _smooth(morph * 2.0) * 0.9, breath, 1.0 - morph * 2.0)
 	else:
-		_kneel(base, 0.94, false, 0.9 * (1.0 - _smooth((morph - 0.5) * 2.0)), breath * 0.7, 0.0)
+		var glint: float = clampf(1.0 - (morph - 0.5) * 2.4, 0.0, 1.0)
+		_kneel(base, 0.94, false, 0.9 * (1.0 - _smooth((morph - 0.5) * 2.0)), breath * 0.7, glint)
 
 	# Partículas de energia subindo do corpo
 	for i in 100:
@@ -1003,11 +1359,11 @@ func _scene_transform() -> void:
 		_glow(pp, 12.0 + _hsh(fi * 8.3) * 16.0, Color(0.70, 0.45, 1.0, 0.45 * al))
 		draw_circle(pp, 2.0 + _hsh(fi * 9.9) * 2.0, Color(0.92, 0.85, 1.0, 0.85 * al))
 
-	# Respiração em vapor depois que ele volta ao normal
+	# Respiração em vapor depois que ele se recompõe
 	if morph > 0.9:
 		for i in 4:
 			var ph: float = fposmod(_total * 0.3 + float(i) / 4.0, 1.0)
-			_glow(base + Vector2(250.0 + ph * 60.0, -250.0 - ph * 80.0), 14.0 + ph * 40.0, Color(0.75, 0.80, 1.0, 0.12 * (1.0 - ph)))
+			_glow(base + Vector2(230.0 + ph * 60.0, -250.0 - ph * 80.0), 14.0 + ph * 40.0, Color(0.75, 0.80, 1.0, 0.12 * (1.0 - ph)))
 
 	_draw_mist(960.0, Color(0.35, 0.40, 0.65, 0.08))
 	for i in 24:
@@ -1021,8 +1377,11 @@ func _scene_transform() -> void:
 # PLANO 4: AMANHECER E DESCANSO
 # ==============================================================================
 
-func _hunter_sit(base: Vector2, s: float, k: float, breath: float) -> void:
-	var rim: Color = Color(0.80, 0.78, 0.95, 0.5).lerp(Color(1.0, 0.72, 0.45, 0.85), k)
+## A lenda descansando encostada na lápide: capa e chapéu cobrindo tudo, sem rosto.
+func _legend_sit(base: Vector2, s: float, k: float, breath: float) -> void:
+	var rim: Color = Color(0.80, 0.78, 0.95, 0.5).lerp(Color(1.0, 0.72, 0.45, 0.9), k)
+	var cape_c: Color = Color(0.13, 0.115, 0.185).lerp(Color(0.30, 0.19, 0.22), k)
+	var cape_d: Color = Color(0.055, 0.047, 0.085).lerp(Color(0.14, 0.085, 0.11), k)
 	var by := Vector2(0.0, breath)
 
 	_glow_ellipse(base + Vector2(40.0, 8.0) * s, 320.0 * s, 30.0 * s, Color(0, 0, 0, 0.5))
@@ -1034,32 +1393,33 @@ func _hunter_sit(base: Vector2, s: float, k: float, breath: float) -> void:
 	_ln(Vector2(-150, -380), Vector2(-150, -300), base, s, stone_c.darkened(0.4), 8.0)
 	_ln(Vector2(-175, -350), Vector2(-125, -350), base, s, stone_c.darkened(0.4), 8.0)
 
-	# Pernas esticadas e botas
-	_pl(base, s, [Vector2(-60, -70), Vector2(120, -62), Vector2(230, -30), Vector2(236, 0), Vector2(-60, 0)], COAT_D)
-	_pl(base, s, [Vector2(200, -42), Vector2(264, -26), Vector2(270, 0), Vector2(200, 0)], Color(0.05, 0.035, 0.03))
-	_ln(Vector2(-60, -70), Vector2(120, -62), base, s, rim, 3.0)
+	# Botas saindo da barra da capa
+	var boot_c := Color(0.045, 0.032, 0.03)
+	_pl(base, s, [Vector2(196, -48), Vector2(262, -30), Vector2(272, 0), Vector2(196, 0)], boot_c)
+	_ln(Vector2(200, -46), Vector2(262, -30), base, s, rim, 3.0)
 
-	# Tronco, apoiado na pedra
-	var torso: Array = [Vector2(-85, -40), Vector2(-92, -170) + by, Vector2(-62, -262) + by, Vector2(8, -290) + by,
-		Vector2(56, -222) + by, Vector2(66, -120), Vector2(50, -45)]
-	_pl(base, s, torso, COAT)
-	draw_polyline(_xf([Vector2(56, -222) + by, Vector2(66, -120), Vector2(50, -45)], base, s), rim, 4.0 * s, true)
-	# Cachecol e ombro enfaixado
-	_pl(base, s, [Vector2(-52, -290) + by, Vector2(30, -296) + by, Vector2(50, -250) + by, Vector2(-50, -246) + by], Color(0.35, 0.06, 0.10))
-	_ln(Vector2(-40, -210) + by, Vector2(10, -170) + by, base, s, Color(0.82, 0.80, 0.74), 14.0)
+	# A capa cobre o corpo todo, do ombro às pernas esticadas, e se abre no chão
+	var outline: Array = [Vector2(-92, -2), Vector2(-96, -120), Vector2(-92, -212) + by, Vector2(-70, -286) + by, Vector2(-8, -322) + by,
+		Vector2(48, -290) + by, Vector2(70, -222) + by, Vector2(84, -150), Vector2(124, -102), Vector2(200, -74), Vector2(252, -44), Vector2(262, -4)]
+	outline.append_array(_hem(Vector2(262, -4), Vector2(-92, -4), 14, 16.0))
+	_gpoly(_xf(outline, base, s), cape_c.lightened(0.05), cape_d)
+	for i in 6:
+		var fx: float = -60.0 + float(i) * 54.0
+		_ln(Vector2(-30.0 + float(i) * 10.0, -290.0) + by, Vector2(fx, -10.0), base, s, Color(0, 0, 0, 0.30), 5.0)
+	draw_polyline(_xf([Vector2(-8, -322) + by, Vector2(48, -290) + by, Vector2(70, -222) + by, Vector2(84, -150), Vector2(124, -102), Vector2(200, -74), Vector2(252, -44)], base, s), rim, 4.0 * s, true)
 
-	# Braço descansando sobre o joelho, com o revólver
-	_limb_l(base, s, Vector2(10, -240) + by, Vector2(110, -140), 50.0, COAT)
-	_limb_l(base, s, Vector2(110, -140), Vector2(175, -80), 42.0, COAT)
-	draw_circle(base + Vector2(182.0, -76.0) * s, 22.0 * s, SKIN.darkened(0.25))
-	_pl(base, s, [Vector2(170, -92), Vector2(236, -104), Vector2(240, -90), Vector2(176, -76)], Color(0.20, 0.21, 0.27))
-	_pl(base, s, [Vector2(172, -80), Vector2(190, -78), Vector2(182, -48), Vector2(164, -52)], Color(0.27, 0.10, 0.08))
+	# Braço coberto descansando sobre o joelho, mão de luva com o revólver
+	_limb_l(base, s, Vector2(10, -240) + by, Vector2(110, -140), 52.0, cape_c)
+	_limb_l(base, s, Vector2(110, -140), Vector2(175, -80), 44.0, cape_c.darkened(0.1))
+	draw_circle(base + Vector2(182.0, -76.0) * s, 22.0 * s, Color(0.06, 0.045, 0.05))
+	_pl(base, s, [Vector2(170, -92), Vector2(236, -104), Vector2(240, -90), Vector2(176, -76)], Color(0.28, 0.29, 0.36))
+	_pl(base, s, [Vector2(172, -80), Vector2(190, -78), Vector2(182, -48), Vector2(164, -52)], Color(0.30, 0.12, 0.08))
 
-	# Cabeça inclinada, chapéu sobre os olhos
-	var hp := Vector2(-18, -318) + by
-	draw_circle(base + (hp + Vector2(8, 10)) * s, 28.0 * s, SKIN.darkened(0.2).lerp(Color(0.85, 0.62, 0.50), k * 0.5))
-	_pl(base, s, [hp + Vector2(-62, -4), hp + Vector2(-40, -46), hp + Vector2(18, -52), hp + Vector2(50, -10), hp + Vector2(78, 2), hp + Vector2(-70, 6)], Color(0.03, 0.025, 0.045))
-	draw_polyline(_xf([hp + Vector2(-40, -46), hp + Vector2(18, -52), hp + Vector2(50, -10), hp + Vector2(78, 2)], base, s), rim, 3.0 * s, true)
+	# Gola alta e chapéu de aba larga inclinado sobre o rosto: só sombra por baixo
+	var hp := Vector2(-18, -330) + by
+	_pl(base, s, [hp + Vector2(-54, 14), hp + Vector2(34, 22), hp + Vector2(52, 82), hp + Vector2(-60, 96)], cape_d)
+	_pl(base, s, [hp + Vector2(-38, 6), hp + Vector2(40, 12), hp + Vector2(44, 48), hp + Vector2(-30, 52)], Color(0.012, 0.008, 0.02))
+	_hat(base, s, hp, 1.0, 10.0, Color(0.075, 0.062, 0.105).lerp(Color(0.20, 0.13, 0.15), k), rim)
 
 
 func _scene_rest() -> void:
@@ -1106,9 +1466,18 @@ func _scene_rest() -> void:
 		draw_rect(Rect2(tx - 22.0, 880.0 - th, 44.0, th), tc)
 		draw_circle(Vector2(tx, 880.0 - th), 22.0, tc)
 
-	_hunter_sit(Vector2(cx - 80.0, 940.0), 1.2, k, sin(_total * 1.4) * 3.0)
+	_legend_sit(Vector2(cx - 80.0, 940.0), 1.2, k, sin(_total * 1.4) * 3.0)
 
 	_draw_mist(960.0, Color(1.0, 0.70, 0.55, 0.10 * k).lerp(Color(0.35, 0.40, 0.65, 0.08), 1.0 - k))
+
+	# Capim em primeiro plano
+	for i in 70:
+		var fg: float = float(i)
+		var gx: float = _hsh(fg * 1.7) * (_vw + 100.0) - 50.0
+		var gh: float = 28.0 + _hsh(fg * 2.9) * 46.0
+		var gsw: float = sin(_total * 1.2 + fg) * 5.0
+		var gc: Color = Color(0.02, 0.02, 0.04).lerp(Color(0.10, 0.06, 0.08), k)
+		draw_colored_polygon(PackedVector2Array([Vector2(gx - 7.0, 1040.0), Vector2(gx + gsw, 1040.0 - gh), Vector2(gx + 7.0, 1040.0)]), gc)
 
 	# Pássaros cruzando o céu no fim
 	var bird_a: float = _smooth((k - 0.55) / 0.3)

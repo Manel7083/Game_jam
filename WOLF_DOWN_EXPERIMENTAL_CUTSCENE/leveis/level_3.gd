@@ -17,6 +17,8 @@ func _ready() -> void:
 	# Antes do chefe, o jogador recupera toda a vida (e o snapshot do reinício já guarda isso).
 	player.health = GameManager.player_max_hp
 	GameManager.set_player_hp(player.health)
+	# Na luta do chefe o neon fica mais discreto, para os ataques continuarem fáceis de ler.
+	neon_intensity = minf(neon_intensity, 0.8)
 	super._ready()
 	_limit_camera()
 	_spawn_boss()
@@ -24,6 +26,15 @@ func _ready() -> void:
 
 func setup_objectives() -> void:
 	ObjectiveManager.set_objective("Derrote o Conde Drácula")
+
+
+## Neon do castelo: violeta, carmesim e um toque de ciano. Cobre só a arena.
+func _neon_palette() -> PackedColorArray:
+	return PackedColorArray([Color(0.78, 0.38, 1.0), Color(1.0, 0.25, 0.5), Color(0.2, 0.95, 1.0)])
+
+
+func _neon_area() -> Rect2:
+	return Rect2(Vector2.ZERO, ARENA_SIZE)
 
 
 func _limit_camera() -> void:

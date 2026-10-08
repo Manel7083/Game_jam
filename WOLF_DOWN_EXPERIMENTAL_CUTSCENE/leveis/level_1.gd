@@ -50,6 +50,13 @@ func setup_objectives() -> void:
 	ObjectiveManager.set_objective("Survive until dawn")
 
 
+## Neon: fase 1 (céu rosado) magenta/ciano/violeta; fase 2 (céu azulado) ciano/verde-água/azul-violeta.
+func _neon_palette() -> PackedColorArray:
+	if _is_level_1():
+		return PackedColorArray([Color(1.0, 0.25, 0.85), Color(0.2, 0.95, 1.0), Color(0.65, 0.35, 1.0)])
+	return PackedColorArray([Color(0.2, 0.95, 1.0), Color(0.3, 1.0, 0.7), Color(0.5, 0.45, 1.0)])
+
+
 func _limit_camera() -> void:
 	var cam := player.get_node_or_null("Camera2D") as Camera2D
 	var map := get_node_or_null("terreno/grass") as TileMap

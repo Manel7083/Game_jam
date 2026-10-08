@@ -1,6 +1,6 @@
-[gd_scene load_steps=7 format=3 uid="uid://c0eloinuerpxy"]
+[gd_scene format=3 uid="uid://c0eloinuerpxy"]
 
-[ext_resource type="Script" path="res://leveis/inteface.gd" id="1_pundu"]
+[ext_resource type="Script" uid="uid://dqbpbxpy6eywa" path="res://leveis/inteface.gd" id="1_pundu"]
 [ext_resource type="FontFile" uid="uid://boh7g0prolevh" path="res://fonts/MountainsofChristmas-Regular.ttf" id="2_15yvs"]
 [ext_resource type="Texture2D" uid="uid://c82emsrrb1hx8" path="res://player_sprites/lobo3x4.png" id="2_es2vs"]
 [ext_resource type="Texture2D" uid="uid://cqeimfoqvy6si" path="res://bullet/fundo.png" id="2_pivuo"]
@@ -10,10 +10,10 @@
 font = ExtResource("2_15yvs")
 font_size = 64
 
-[node name="inteface" type="CanvasLayer"]
+[node name="inteface" type="CanvasLayer" unique_id=134686570]
 script = ExtResource("1_pundu")
 
-[node name="barra_munição" type="TextureProgressBar" parent="."]
+[node name="barra_munição" type="TextureProgressBar" parent="." unique_id=903927399]
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
@@ -25,7 +25,7 @@ fill_mode = 3
 nine_patch_stretch = true
 texture_under = ExtResource("2_pivuo")
 
-[node name="barra_municao" type="TextureProgressBar" parent="barra_munição"]
+[node name="barra_municao" type="TextureProgressBar" parent="barra_munição" unique_id=705951240]
 layout_mode = 1
 anchors_preset = 2
 anchor_top = 1.0
@@ -39,7 +39,7 @@ value = 100.0
 nine_patch_stretch = true
 texture_progress = ExtResource("3_ykk10")
 
-[node name="HP" type="Label" parent="."]
+[node name="HP" type="Label" parent="." unique_id=1287728112]
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
@@ -53,7 +53,7 @@ text = "HP"
 label_settings = SubResource("LabelSettings_tkq00")
 horizontal_alignment = 1
 
-[node name="Sprite2D" type="Sprite2D" parent="HP"]
+[node name="Sprite2D" type="Sprite2D" parent="HP" unique_id=2082949579]
 position = Vector2(-86.0001, 19)
 scale = Vector2(0.132391, 0.132391)
 texture = ExtResource("2_es2vs")

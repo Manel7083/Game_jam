@@ -72,16 +72,16 @@ var _key_style: StyleBoxFlat
 var _key_hi_style: StyleBoxFlat
 
 var _story: Array[String] = [
-	"Diz a lenda que, há séculos, um mal antigo foi selado sob o castelo.\nSeu nome foi esquecido... mas ele nunca morreu.",
-	"Então o selo se rompeu.\nAs sepulturas se abriram, e a noite voltou a caçar.",
-	"O vilarejo caiu em silêncio.\nPortas arrombadas, ruas manchadas de sangue.\nNinguém restou para contar de onde vinham as criaturas.",
-	"No alto da colina ergue-se o castelo ancestral.\nÉ de lá que a maldição se espalha.",
-	"Nas profundezas do castelo, o Conde Drácula abre os olhos.\nO selo foi quebrado, e sua sede de séculos despertou.",
-	"Drácula sente o cheiro do sangue.\nSente o medo do povo.\nE sente, ao longe, os passos de um caçador.",
-	"Seu nome ninguem sabe.\nSem exército e sem aliados:\napenas uma arma e um motivo para sobreviver.",
-	"Mas ele não é um caçador comum.\nSob o luar, o sangue desperta o fardo que ele carrega,\ne fazem seus olhos brilharem em dourado.",
+	"Uma antiga lenda dizia que, quando a lua cheia tomasse o céu,\num mal adormecido voltaria a caminhar entre os vivos.",
+	"Naquela noite, as sepulturas começaram a se abrir.\nMortos e criaturas esquecidas surgiram da terra\ne avançaram contra o vilarejo.",
+	"O vilarejo foi tomado pelo caos.\nPortas foram destruídas, o sangue tomou as ruas,\ne ninguém sabia de onde aquelas criaturas tinham vindo.",
+	"No centro daquela terra erguia-se um antigo castelo.\nE, naquela noite, sua maldição voltou a despertar.",
+	"Nas profundezas do castelo, um antigo caixão começou a se abrir.\nDepois de séculos selado, o Conde Drácula finalmente despertou.",
+	"A fome e a sede de sangue voltaram com ele.\nDrácula sentiu o cheiro do vilarejo...\ne percebeu que alguém também havia retornado.",
+	"Ao longe, uma figura caminhava pela noite.\nNinguém sabia seu nome, de onde tinha vindo\nou há quanto tempo vagava pelo mundo.",
+	"Mas ele não era apenas um caçador.\nSob o luar, sua verdadeira natureza despertava.\nHavia uma fera dentro dele...\ne uma dívida antiga ainda não havia sido paga.",
 	"GUIAS DE SOBREVIVÊNCIA E CONTROLES",
-	"O castelo o espera.\nDrácula está desperto.\n\nE a caçada começa..."
+	"Drácula havia despertado. As criaturas já estavam soltas.\n\nE o Lobo finalmente havia retornado\npara terminar aquilo que começou."
 ]
 
 var _titles: Array[String] = [
@@ -1203,24 +1203,26 @@ func _hunter(base: Vector2, k: float) -> void:
 	_poly([Vector2(10, -80), Vector2(35, -80), Vector2(45, 15), Vector2(15, 15)], b, k, sil)
 	_ln(Vector2(-20, -170), Vector2(-40, -90), b, k, sil, 22.0)
 	_ln(Vector2(30, -170), Vector2(90, -130), b, k, sil, 24.0)
+	# O velho .38 (revólver curto: mão, armação, tambor, cano curto e cabo). Sem brilho mágico:
+	# é a arma gasta que o acompanha há muito tempo (a lendária só aparece depois, na Sala dos Guardiões).
 	var g1 := Vector2(70, -140)
-	var g2 := Vector2(200, -155)
-	_ln(g1, g1 + Vector2(50, -5), b, k, sil, 24.0)
-	_ln(g1 + Vector2(40, -5), g2, b, k, sil, 14.0)
-	_ln(g1 + Vector2(40, -12), g2 + Vector2(0, -7), b, k, sil, 8.0)
-	var core: Vector2 = b + (g1 + Vector2(65, -8)) * k
-	var gp: float = 0.5 + 0.5 * sin(_total * 15.0)
-	_glow(core, (26.0 + gp * 14.0) * k, Color(0.3, 0.7, 1.0, 0.55))
-	draw_circle(core, 4.0 * k, Color(0.7, 0.95, 1.0))
-	_glow(b + (g2 + Vector2(14, -12 + wind * 0.2)) * k, 26.0 * k, Color(0.6, 0.7, 0.8, 0.18))
+	var g2 := Vector2(170, -156)   # ponta do cano
+	_ln(g1, g1 + Vector2(40, -4), b, k, sil, 24.0)
+	_poly([g1 + Vector2(38, -26), g1 + Vector2(82, -28), g1 + Vector2(88, -4), g1 + Vector2(42, 2)], b, k, sil)
+	draw_circle(b + (g1 + Vector2(58, -12)) * k, 17.0 * k, sil)
+	_ln(g1 + Vector2(76, -16), g2, b, k, sil, 12.0)
+	_ln(g1 + Vector2(78, -6), g2 + Vector2(-14, 4), b, k, sil, 7.0)
+	_poly([g2 + Vector2(-6, -6), g2 + Vector2(0, -15), g2 + Vector2(6, -6)], b, k, sil)
+	_poly([g1 + Vector2(38, -2), g1 + Vector2(60, -2), g1 + Vector2(54, 38), g1 + Vector2(32, 36)], b, k, sil)
+	_glow(b + (g2 + Vector2(-10, -10 + wind * 0.1)) * k, 22.0 * k, Color(0.8, 0.85, 1.0, 0.14))
 	_poly([Vector2(-25, -180), Vector2(35, -180), Vector2(25, -210), Vector2(-15, -210)], b, k, sil)
 	draw_circle(b + Vector2(5, -215) * k, 18.0 * k, sil)
-	_ln(Vector2(10, -215), Vector2(18, -212), b, k, Color(0.4, 0.8, 1.0, 0.95), 2.0)
+	_ln(Vector2(10, -215), Vector2(18, -212), b, k, Color(1.0, 0.72, 0.22, 0.95), 2.0)
 	_poly([Vector2(-55, -215), Vector2(-30, -235), Vector2(35, -235), Vector2(70, -210)], b, k, sil)
 	_poly([Vector2(-25, -230), Vector2(-15, -265), Vector2(15, -265), Vector2(25, -230)], b, k, sil)
 	draw_polyline(_xf([Vector2(-30, -235), Vector2(35, -235), Vector2(70, -210)], b, k), rim, 3.0, true)
 	draw_polyline(_xf([Vector2(35, -180), Vector2(60 + wind * 0.5, -30)], b, k), rim, 2.5, true)
-	_ln(g1 + Vector2(40, -16), g2 + Vector2(0, -11), b, k, rim, 2.0)
+	_ln(g1 + Vector2(48, -26), g2 + Vector2(0, -7), b, k, rim, 2.0)
 
 
 func _scene_hunter() -> void:
@@ -1364,6 +1366,43 @@ func _card(rect: Rect2, header: String, delay: float, border: Color) -> float:
 	return a
 
 
+func _mouse_icon(pos: Vector2, left_hi: bool, alpha: float) -> void:
+	var r := Rect2(pos, Vector2(46.0, 64.0))
+	draw_style_box(_key_style, r)
+	if left_hi:
+		var pulse: float = 0.5 + 0.5 * sin(_total * 6.0)
+		draw_rect(Rect2(r.position.x + 4.0, r.position.y + 4.0, 17.0, 26.0), Color(1.0, 0.3, 0.35, (0.45 + 0.5 * pulse) * alpha))
+	var line_col := Color(0.6, 0.5, 0.8, alpha)
+	draw_line(Vector2(r.position.x + 23.0, r.position.y + 4.0), Vector2(r.position.x + 23.0, r.position.y + 32.0), line_col, 2.0)
+	draw_line(Vector2(r.position.x + 4.0, r.position.y + 32.0), Vector2(r.end.x - 4.0, r.position.y + 32.0), line_col, 2.0)
+
+
+func _stick_icon(center: Vector2, hi: bool, alpha: float) -> void:
+	var col := Color(0.60, 0.50, 0.80, alpha)
+	if hi:
+		col = Color(1.0, 0.45, 0.50, alpha)
+	draw_circle(center, 31.0, Color(0.13, 0.10, 0.19, alpha))
+	draw_arc(center, 31.0, 0.0, TAU, 32, col, 3.0)
+	var off := Vector2.ZERO
+	if hi:
+		off = Vector2(cos(_total * 4.0), sin(_total * 4.0)) * 9.0
+	draw_circle(center + off, 15.0, Color(0.45, 0.12, 0.22, alpha) if hi else Color(0.22, 0.17, 0.32, alpha))
+	draw_arc(center + off, 15.0, 0.0, TAU, 24, col, 3.0)
+
+
+func _pad_badge(rect: Rect2, label: String, hi: bool, alpha: float) -> void:
+	_keycap(rect, label, hi, 30, alpha)
+
+
+func _pad_square(center: Vector2, hi: bool, alpha: float) -> void:
+	var col := Color(0.60, 0.50, 0.80, alpha)
+	if hi:
+		col = Color(1.0, 0.45, 0.50, alpha)
+	draw_circle(center, 31.0, Color(0.45, 0.12, 0.22, alpha) if hi else Color(0.13, 0.10, 0.19, alpha))
+	draw_arc(center, 31.0, 0.0, TAU, 32, col, 3.0)
+	draw_rect(Rect2(center - Vector2(12.0, 12.0), Vector2(24.0, 24.0)), Color(1.0, 0.75, 0.85, alpha), false, 4.0)
+
+
 func _scene_controls() -> void:
 	var cx: float = _vw * 0.5
 	_sky(Color(0.02, 0.012, 0.045), Color(0.10, 0.05, 0.15))
@@ -1373,51 +1412,77 @@ func _scene_controls() -> void:
 	draw_rect(Rect2(-400.0, -300.0, _vw + 800.0, 1700.0), Color(0.01, 0.005, 0.02, 0.62))
 
 	var ta: float = _smooth(_elapsed / 0.6)
-	draw_string_outline(FONT_BOLD, Vector2(0.0, 175.0), "GUIAS DE SOBREVIVÊNCIA", HORIZONTAL_ALIGNMENT_CENTER, _vw, 82, 12, Color(0.12, 0.03, 0.18, ta))
-	draw_string(FONT_BOLD, Vector2(0.0, 175.0), "GUIAS DE SOBREVIVÊNCIA", HORIZONTAL_ALIGNMENT_CENTER, _vw, 82, Color(0.92, 0.80, 1.0, ta))
+	draw_string_outline(FONT_BOLD, Vector2(0.0, 165.0), "GUIAS DE SOBREVIVÊNCIA", HORIZONTAL_ALIGNMENT_CENTER, _vw, 82, 12, Color(0.12, 0.03, 0.18, ta))
+	draw_string(FONT_BOLD, Vector2(0.0, 165.0), "GUIAS DE SOBREVIVÊNCIA", HORIZONTAL_ALIGNMENT_CENTER, _vw, 82, Color(0.92, 0.80, 1.0, ta))
 
-	var cw: float = minf(830.0, _vw * 0.5 - 70.0)
-	var x1: float = cx - cw - 30.0
-	var x2: float = cx + 30.0
+	# --- Tabela de controles: ação | teclado e mouse | controle ---
+	var card_w: float = minf(1720.0, _vw - 120.0)
+	var x0: float = cx - card_w * 0.5
+	var a1: float = _card(Rect2(x0, 195.0, card_w, 725.0), "CONTROLES", 0.4, Color(0.55, 0.30, 0.75, 0.9))
+	var y0: float = 195.0 + (1.0 - a1) * 40.0
+	var kx: float = x0 + card_w * 0.27
+	var px: float = x0 + card_w * 0.64
+	var head_col := Color(0.75, 0.65, 0.95)
+	_text(Vector2(kx, y0 + 140.0), "TECLADO E MOUSE", 30, head_col, a1)
+	_text(Vector2(px, y0 + 140.0), "CONTROLE", 30, head_col, a1)
 
-	# --- Movimentação ---
-	var a1: float = _card(Rect2(x1, 230.0, cw, 440.0), "MOVIMENTAÇÃO", 0.4, Color(0.55, 0.30, 0.75, 0.9))
-	var hi: int = int(_total * 2.0) % 4
-	var c1 := Vector2(x1, 230.0 + (1.0 - a1) * 40.0)
-	_keycap(Rect2(c1.x + 120.0, c1.y + 125.0, 84.0, 84.0), "W", hi == 0, 40, a1)
-	_keycap(Rect2(c1.x + 30.0, c1.y + 217.0, 84.0, 84.0), "A", hi == 1, 40, a1)
-	_keycap(Rect2(c1.x + 120.0, c1.y + 217.0, 84.0, 84.0), "S", hi == 2, 40, a1)
-	_keycap(Rect2(c1.x + 210.0, c1.y + 217.0, 84.0, 84.0), "D", hi == 3, 40, a1)
-	_text(c1 + Vector2(340.0, 190.0), "W A S D", 40, GOLD, a1)
-	_text(c1 + Vector2(340.0, 236.0), "Mover o Lobo", 34, BODY, a1)
-	_keycap(Rect2(c1.x + 30.0, c1.y + 335.0, 280.0, 70.0), "ESPAÇO", int(_total * 1.2) % 2 == 0, 32, a1)
-	_text(c1 + Vector2(340.0, 385.0), "Ataque corpo a corpo", 34, BODY, a1)
+	var actions: Array[String] = ["MOVER", "MIRAR", "ATIRAR", "FACADA", "TROCAR ARMA", "DASH"]
+	var active: int = int(_total * 0.9) % actions.size()
+	for i in actions.size():
+		var cy: float = y0 + 205.0 + float(i) * 88.0
+		var hi: bool = (i == active)
+		if i > 0:
+			draw_line(Vector2(x0 + 40.0, cy - 44.0), Vector2(x0 + card_w - 40.0, cy - 44.0), Color(0.55, 0.30, 0.75, 0.25 * a1), 2.0)
+		_text(Vector2(x0 + 40.0, cy + 12.0), actions[i], 36, GOLD, a1)
 
-	# --- Combate ---
-	var a2: float = _card(Rect2(x2, 230.0, cw, 440.0), "COMBATE", 0.9, Color(0.55, 0.30, 0.75, 0.9))
-	var c2 := Vector2(x2, 230.0 + (1.0 - a2) * 40.0)
-	var mouse := Rect2(c2.x + 60.0, c2.y + 125.0, 110.0, 170.0)
-	draw_style_box(_key_style, mouse)
-	var click: float = 0.5 + 0.5 * sin(_total * 5.0)
-	draw_rect(Rect2(mouse.position.x + 6.0, mouse.position.y + 6.0, 48.0, 70.0), Color(1.0, 0.3, 0.35, (0.35 + 0.55 * click) * a2))
-	draw_line(Vector2(mouse.position.x + 55.0, mouse.position.y + 6.0), Vector2(mouse.position.x + 55.0, mouse.position.y + 80.0), Color(0.6, 0.5, 0.8, a2), 3.0)
-	draw_line(Vector2(mouse.position.x + 6.0, mouse.position.y + 80.0), Vector2(mouse.end.x - 6.0, mouse.position.y + 80.0), Color(0.6, 0.5, 0.8, a2), 3.0)
-	_text(c2 + Vector2(230.0, 175.0), "MOUSE", 40, GOLD, a2)
-	_text(c2 + Vector2(230.0, 218.0), "Mirar a arma", 34, BODY, a2)
-	_text(c2 + Vector2(230.0, 285.0), "CLIQUE ESQ.", 40, GOLD, a2)
-	_text(c2 + Vector2(230.0, 328.0), "Atirar", 34, BODY, a2)
-	draw_multiline_string(FONT_BOLD, c2 + Vector2(40.0, 380.0), "A munição se regenera depois de alguns segundos sem atirar.",
-		HORIZONTAL_ALIGNMENT_LEFT, cw - 80.0, 26, 2, Color(0.75, 0.70, 0.85, a2))
+		# Teclado e mouse
+		match i:
+			0:
+				var letters: Array[String] = ["W", "A", "S", "D"]
+				var lit: int = int(_total * 3.0) % 4
+				for k in 4:
+					_keycap(Rect2(kx + float(k) * 68.0, cy - 30.0, 60.0, 60.0), letters[k], hi and k == lit, 32, a1)
+			1:
+				_mouse_icon(Vector2(kx, cy - 32.0), false, a1)
+				_text(Vector2(kx + 70.0, cy + 10.0), "Mouse", 32, BODY, a1)
+			2:
+				_mouse_icon(Vector2(kx, cy - 32.0), true, a1)
+				_text(Vector2(kx + 70.0, cy + 10.0), "Botão esquerdo", 32, BODY, a1)
+			3:
+				_keycap(Rect2(kx, cy - 30.0, 230.0, 60.0), "ESPAÇO", hi, 30, a1)
+			4:
+				_keycap(Rect2(kx, cy - 30.0, 120.0, 60.0), "TAB", hi, 30, a1)
+			5:
+				_keycap(Rect2(kx, cy - 30.0, 170.0, 60.0), "SHIFT", hi, 30, a1)
+
+		# Controle
+		match i:
+			0:
+				_stick_icon(Vector2(px + 32.0, cy), hi, a1)
+				_text(Vector2(px + 85.0, cy + 10.0), "Analógico esquerdo", 32, BODY, a1)
+			1:
+				_stick_icon(Vector2(px + 32.0, cy), false, a1)
+				_text(Vector2(px + 85.0, cy + 10.0), "Analógico direito", 32, BODY, a1)
+			2:
+				_pad_badge(Rect2(px, cy - 30.0, 100.0, 60.0), "R2", hi, a1)
+			3:
+				_pad_badge(Rect2(px, cy - 30.0, 100.0, 60.0), "R1", hi, a1)
+			4:
+				_pad_badge(Rect2(px, cy - 30.0, 100.0, 60.0), "L1", hi, a1)
+			5:
+				_pad_square(Vector2(px + 32.0, cy), hi, a1)
+				_text(Vector2(px + 85.0, cy + 10.0), "Quadrado", 32, BODY, a1)
 
 	# --- Objetivo ---
-	var a3: float = _card(Rect2(x1, 705.0, cw * 2.0 + 60.0, 215.0), "OBJETIVO", 1.4, Color(0.85, 0.20, 0.30, 0.95))
-	var c3 := Vector2(x1, 705.0 + (1.0 - a3) * 40.0)
-	_keycap(Rect2(c3.x + 40.0, c3.y + 120.0, 76.0, 76.0), "Q", false, 38, a3)
-	_text(c3 + Vector2(135.0, 172.0), "Interagir", 34, BODY, a3)
-	_keycap(Rect2(c3.x + 380.0, c3.y + 120.0, 120.0, 76.0), "ESC", false, 32, a3)
-	_text(c3 + Vector2(520.0, 172.0), "Pausar", 34, BODY, a3)
-	draw_multiline_string(FONT_BOLD, c3 + Vector2(760.0, 150.0), "Sobreviva à noite, invada o castelo e destrua o Drácula.",
-		HORIZONTAL_ALIGNMENT_LEFT, cw * 2.0 - 760.0 + 30.0, 36, 2, Color(1.0, 0.86, 0.86, a3))
+	var a3: float = _smooth((_elapsed - 1.4) / 0.5)
+	var oy: float = 945.0 + (1.0 - a3) * 30.0
+	draw_style_box(_card_style, Rect2(x0, oy, card_w, 100.0))
+	draw_rect(Rect2(x0, oy, card_w, 100.0), Color(0.85, 0.20, 0.30, 0.95 * a3), false, 3.0)
+	_keycap(Rect2(x0 + 40.0, oy + 20.0, 60.0, 60.0), "Q", false, 32, a3)
+	_text(Vector2(x0 + 115.0, oy + 62.0), "Interagir", 30, BODY, a3)
+	_keycap(Rect2(x0 + 330.0, oy + 20.0, 100.0, 60.0), "ESC", false, 28, a3)
+	_text(Vector2(x0 + 445.0, oy + 62.0), "Pausar", 30, BODY, a3)
+	_text(Vector2(x0 + 640.0, oy + 62.0), "Sobreviva à noite, invada o castelo e destrua o Drácula.", 30, Color(1.0, 0.86, 0.86), a3)
 
 
 func _scene_final() -> void:
