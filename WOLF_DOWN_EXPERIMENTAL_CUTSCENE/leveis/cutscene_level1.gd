@@ -18,7 +18,7 @@ const WOLF_SOUND_PATH: String = "res://audio/shot_07_olho_lobo.wav"
 
 ## Duração MÍNIMA de cada plano. A duração real é calculada em _ready():
 ## max(mínimo, tempo de digitação + READ_TIME). Assim o texto nunca é cortado.
-const SHOT_MIN: Array[float] = [5.5, 8.5, 9.0, 9.0, 7.5, 7.5, 4.5]
+const SHOT_MIN: Array[float] = [5.5, 8.5, 9.0, 9.0, 10.5, 17.5, 14.5]
 const READ_TIME: float = 2.4   # tempo para ler depois que o texto termina
 
 # Pausas dramáticas da digitação (segundos extras).

@@ -1,12 +1,17 @@
 extends Node2D
 ## Poça de sangue: círculo de aviso, depois explode e causa dano a quem estiver dentro.
 
-@export var radius: float = 44.0
+@export var radius: float = 40.0
 @export var warn_time: float = 1.0
 @export var damage: int = 1
 
+const BURST_SFX := "res://audio/dracula/drac_pool_burst.wav"
+
 var _t := 0.0
 var _burst := false
+
+func _ready() -> void:
+	z_index = -1   # desenha no chão, abaixo dos personagens
 
 func _process(delta: float) -> void:
 	_t += delta
@@ -19,10 +24,23 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 func _do_burst() -> void:
+	_play_burst_sound()
 	var p := BossUtils.get_player(get_tree())
 	if p and p.global_position.distance_to(global_position) <= radius:
 		BossUtils.damage_player(p, damage)
 	BossUtils.shake(self, 4.0, 0.2)
+
+## Som da explosão. Fica no nó pai para não ser cortado quando a poça some (queue_free).
+func _play_burst_sound() -> void:
+	if not ResourceLoader.exists(BURST_SFX) or get_parent() == null:
+		return
+	var p := AudioStreamPlayer2D.new()
+	p.stream = load(BURST_SFX)
+	p.bus = &"SFX" if AudioServer.get_bus_index(&"SFX") != -1 else &"Master"
+	get_parent().add_child(p)
+	p.global_position = global_position
+	p.finished.connect(p.queue_free)
+	p.play()
 
 func _draw() -> void:
 	var dark := Color(0.44, 0.03, 0.13)

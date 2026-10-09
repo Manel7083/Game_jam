@@ -32,8 +32,18 @@ enum State { INTRO, CHASE, ATTACKING, DEAD }
 ## Morcegos invocados: usa o morcego inimigo que já existe no jogo.
 @export var minion_scene: PackedScene = preload("res://morcego_inimigo/morcego/morcego.tscn")
 
+@export_group("Áudio")
+## Volume extra (dB) de todos os sons de ataque do Drácula.
+@export var sfx_volume_db: float = 0.0
+## Volume (dB) dos gritos de mudança de fase.
+@export var scream_volume_db: float = 3.0
+## Bus de áudio usado pelos sons (se não existir no projeto, usa o Master).
+@export var sfx_bus: StringName = &"SFX"
+
 const SPR := "res://boss_dracula/sprites/"
 const MAX_MINIONS := 6
+const SFX_DIR := "res://audio/dracula/"
+static var _sfx_cache: Dictionary = {}
 
 var health: int
 var phase: int = 1
@@ -106,6 +116,7 @@ func _intro() -> void:
 	create_tween().tween_property(_sprite, "modulate:a", 1.0, 1.2)
 	await get_tree().create_timer(1.2).timeout
 	_sprite.play("roar")
+	_play_scream("drac_scream_intro")
 	BossUtils.shake(self, 8.0, 1.2)
 	await get_tree().create_timer(1.3).timeout
 	invulnerable = false
@@ -235,6 +246,7 @@ func _phase_transition() -> void:
 	_sprite.modulate = Color.WHITE
 	_sprite.play("roar")
 	BossUtils.shake(self, 10.0, 1.0)
+	_play_scream("drac_scream_phase%d" % phase)
 	_ring_of_orbs(12, 120.0)
 	await get_tree().create_timer(1.0).timeout
 	if state == State.DEAD:
@@ -314,6 +326,7 @@ func _aim() -> Vector2:
 func _attack_orbs() -> void:
 	_face(_aim().x)
 	_sprite.play("cast")
+	_play_sfx("drac_orbs_cast")
 	await get_tree().create_timer(0.5).timeout
 	if not _alive(): return
 	var base := _aim()
@@ -324,12 +337,16 @@ func _attack_orbs() -> void:
 			_fan(base, 5, 0.3, 165.0)
 			await get_tree().create_timer(0.7).timeout
 			if not _alive(): return
+			_play_sfx("drac_orbs_shot")
 			_ring_of_orbs(10, 125.0)
 		3:
 			for i in 16:
 				if not _alive(): return
 				_spawn_orb(base.rotated(i * 0.45), 150.0)
+				if i % 4 == 0:
+					_play_sfx("drac_orbs_shot", -4.0)
 				await get_tree().create_timer(0.09).timeout
+			_play_sfx("drac_orbs_shot")
 			_fan(_aim(), 7, 0.25, 175.0)
 	await get_tree().create_timer(0.4).timeout
 	_end_attack()
@@ -338,6 +355,7 @@ func _attack_orbs() -> void:
 ## Ataque 2: invoca morcegos
 func _attack_bats() -> void:
 	_sprite.play("roar")
+	_play_sfx("drac_bats")
 	BossUtils.shake(self, 5.0, 0.5)
 	await get_tree().create_timer(0.8).timeout
 	if not _alive(): return
@@ -349,6 +367,7 @@ func _attack_bats() -> void:
 ## Ataque 3: some em névoa, reaparece perto do jogador e atira
 func _attack_teleport() -> void:
 	invulnerable = true
+	_play_sfx("drac_teleport_out")
 	var tw := create_tween()
 	tw.tween_property(_sprite, "modulate:a", 0.0, 0.3)
 	await tw.finished
@@ -359,6 +378,7 @@ func _attack_teleport() -> void:
 		var ang := randf() * TAU
 		global_position = _player.global_position + Vector2.from_angle(ang) * randf_range(140.0, 210.0)
 		_clamp_to_arena()
+	_play_sfx("drac_teleport_in")   # já na nova posição
 	var tw2 := create_tween()
 	tw2.tween_property(_sprite, "modulate:a", 1.0, 0.25)
 	await tw2.finished
@@ -382,11 +402,13 @@ func _attack_bat_dash() -> void:
 		_dash_speed = 0.0
 		_face(_aim().x)
 		_sprite.modulate = Color(1.6, 0.8, 0.8)   # telégrafo: avermelha antes de investir
+		_play_sfx("drac_bat_warn")
 		await get_tree().create_timer(0.7 - 0.08 * phase).timeout
 		if not _alive(): return
 		_sprite.modulate = Color.WHITE
 		_dash_dir = _aim()
 		_dash_speed = 280.0 + 30.0 * phase
+		_play_sfx("drac_bat_dash")
 		await get_tree().create_timer(0.45).timeout
 	if not _alive(): return
 	_dash_speed = 0.0
@@ -412,6 +434,51 @@ func _attack_pools() -> void:
 	_end_attack(1.8)
 
 
+# ------------------------------------------------------------------ ÁUDIO
+
+func _get_sfx(sfx_name: String) -> AudioStream:
+	var path := SFX_DIR + sfx_name + ".wav"
+	if not _sfx_cache.has(path):
+		_sfx_cache[path] = load(path) if ResourceLoader.exists(path) else null
+	return _sfx_cache[path]
+
+
+func _sfx_bus_name() -> StringName:
+	return sfx_bus if AudioServer.get_bus_index(sfx_bus) != -1 else &"Master"
+
+
+## Toca um som de ataque na posição do Drácula (ou em `at`). O player fica na cena do nível,
+## então o som não é cortado se o chefe sumir. Se o arquivo não existir, não faz nada.
+func _play_sfx(sfx_name: String, volume_db: float = 0.0, at: Vector2 = Vector2.INF) -> void:
+	var stream := _get_sfx(sfx_name)
+	var host := get_parent()
+	if stream == null or host == null:
+		return
+	var p := AudioStreamPlayer2D.new()
+	p.stream = stream
+	p.volume_db = sfx_volume_db + volume_db
+	p.bus = _sfx_bus_name()
+	host.add_child(p)
+	p.global_position = global_position if at == Vector2.INF else at
+	p.finished.connect(p.queue_free)
+	p.play()
+
+
+## Grito arrepiante (abertura e mudanças de fase). Som global, sem atenuação.
+func _play_scream(sfx_name: String) -> void:
+	var stream := _get_sfx(sfx_name)
+	var host := get_parent()
+	if stream == null or host == null:
+		return
+	var p := AudioStreamPlayer.new()
+	p.stream = stream
+	p.volume_db = scream_volume_db
+	p.bus = _sfx_bus_name()
+	host.add_child(p)
+	p.finished.connect(p.queue_free)
+	p.play()
+
+
 # ------------------------------------------------------------------ SPAWNERS
 
 func _spawn_orb(dir: Vector2, spd: float) -> void:
@@ -434,6 +501,7 @@ func _ring_of_orbs(count: int, spd: float) -> void:
 
 
 func _spawn_pool(pos: Vector2) -> void:
+	_play_sfx("drac_pool_spawn", -2.0, pos)
 	var p := pool_scene.instantiate()
 	get_parent().add_child(p)
 	p.global_position = pos
