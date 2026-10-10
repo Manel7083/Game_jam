@@ -23,6 +23,12 @@ var _weave_t: float = 0.0
 var _base_scale: Vector2 = Vector2.ONE
 var _fx_tween: Tween = null
 
+@onready var audio_passos: AudioStreamPlayer2D = $audio_passos
+@onready var audio_chiado: AudioStreamPlayer2D = $audio_chiado
+@onready var audio_bote: AudioStreamPlayer2D = $audio_bote
+@onready var audio_dano: AudioStreamPlayer2D = $audio_dano
+@onready var audio_morte: AudioStreamPlayer2D = $audio_morte
+
 
 func _ready() -> void:
 	max_health = 3
@@ -39,6 +45,7 @@ func move_toward_player() -> void:
 	if not detect_player():
 		velocity = Vector2.ZERO
 		animation.pause()
+		audio_passos.stop()
 		return
 
 	var delta := get_physics_process_delta_time()
@@ -57,6 +64,8 @@ func move_toward_player() -> void:
 			velocity = direction * speed
 			animation.speed_scale = 1.5
 			animation.play("run")
+			if not audio_passos.playing:
+				_play_varied(audio_passos, 0.06)
 			if _lunge_cd <= 0.0 and global_position.distance_to(player.global_position) <= lunge_range:
 				_set_state(State.TELEGRAPH)
 
@@ -81,6 +90,8 @@ func move_toward_player() -> void:
 
 func take_damage(amount: int, source_position: Vector2, melee: bool = false) -> void:
 	super.take_damage(amount, source_position, melee)
+	if not is_dead:
+		_play_varied(audio_dano)
 	# levar dano interrompe o bote
 	if not is_dead and (_state == State.TELEGRAPH or _state == State.LUNGE):
 		_lunge_cd = lunge_cooldown * 0.5
@@ -92,13 +103,17 @@ func _set_state(new_state: State) -> void:
 	_state_time = 0.0
 	if _fx_tween:
 		_fx_tween.kill()
+	if new_state != State.CHASE:
+		audio_passos.stop()
 	match new_state:
 		State.TELEGRAPH:
+			_play_varied(audio_chiado, 0.05)
 			animation.speed_scale = 0.4
 			_fx_tween = create_tween().set_parallel(true)
 			_fx_tween.tween_property(texture, "scale", _base_scale * Vector2(1.2, 0.8), telegraph_time)
 			_fx_tween.tween_property(texture, "self_modulate", Color(1.6, 0.8, 0.4), telegraph_time)
 		State.LUNGE:
+			_play_varied(audio_bote)
 			animation.speed_scale = 3.0
 			texture.scale = _base_scale * Vector2(0.85, 1.25)
 			texture.self_modulate = Color.WHITE
@@ -109,3 +124,47 @@ func _set_state(new_state: State) -> void:
 		State.CHASE:
 			texture.scale = _base_scale
 			texture.self_modulate = Color.WHITE
+
+
+## Morte da aranha: sangue vinho, poça no chão e guincho molhado.
+## Substitui o die() do EnemyBase (mesmos passos, mas com o efeito próprio).
+func die() -> void:
+	if is_dead:
+		return
+	is_dead = true
+	set_physics_process(false)
+	if _fx_tween:
+		_fx_tween.kill()
+	audio_passos.stop()
+	$collision.set_deferred("disabled", true)
+	GameManager.register_kill(score_value)
+	ParticleFX.spider_death(get_tree().current_scene, global_position, knockback_velocity)
+	_play_death_sounds()
+	var tween := create_tween()
+	tween.tween_property(texture, "modulate:a", 0.0, 0.15)
+	tween.tween_callback(queue_free)
+
+
+## Toca o som com um pouco de variação de tom para não soar repetido.
+func _play_varied(source: AudioStreamPlayer2D, spread: float = 0.1) -> void:
+	source.pitch_scale = randf_range(1.0 - spread, 1.0 + spread)
+	source.play()
+
+
+## Os sons de morte precisam sobreviver ao nó, então tocam de players soltos na cena.
+func _play_death_sounds() -> void:
+	var scene := get_tree().current_scene
+	if scene == null:
+		return
+	for source in [audio_morte, audio_hit_faca]:
+		if source.stream == null:
+			continue
+		var sound := AudioStreamPlayer2D.new()
+		sound.stream = source.stream
+		sound.volume_db = source.volume_db
+		sound.pitch_scale = randf_range(0.93, 1.07) if source == audio_morte else source.pitch_scale
+		sound.max_distance = source.max_distance
+		sound.global_position = global_position
+		scene.add_child(sound)
+		sound.finished.connect(sound.queue_free)
+		sound.play()

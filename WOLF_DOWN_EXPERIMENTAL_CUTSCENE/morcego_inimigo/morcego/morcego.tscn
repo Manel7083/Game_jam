@@ -9,6 +9,11 @@
 [ext_resource type="AudioStream" uid="uid://cgboygyrevgsg" path="res://enemies_sprites/freesound_crunchpixstudio-attack-release-384909.mp3" id="7_isrry"]
 [ext_resource type="AudioStream" uid="uid://bbqc1jieqr257" path="res://enemies_sprites/dragon-studio-punch-431475.mp3" id="8_nt4kd"]
 
+[ext_resource type="AudioStream" path="res://morcego_inimigo/morcego/sons/morcego_asas.wav" id="9_asas"]
+[ext_resource type="AudioStream" path="res://morcego_inimigo/morcego/sons/morcego_grito.wav" id="10_grito"]
+[ext_resource type="AudioStream" path="res://morcego_inimigo/morcego/sons/morcego_dano.wav" id="11_dano"]
+[ext_resource type="AudioStream" path="res://morcego_inimigo/morcego/sons/morcego_morte.wav" id="12_morte"]
+
 [sub_resource type="Resource" id="Resource_wbjhh"]
 metadata/__load_path__ = "res://morcego/morcego_idle.png"
 
@@ -365,3 +370,23 @@ volume_db = 18.0
 [node name="audio_hit_faca" type="AudioStreamPlayer2D" parent="." unique_id=1579563191]
 stream = ExtResource("8_nt4kd")
 pitch_scale = 2.08
+
+[node name="audio_asas" type="AudioStreamPlayer2D" parent="."]
+stream = ExtResource("9_asas")
+volume_db = -8.0
+max_distance = 450.0
+
+[node name="audio_grito" type="AudioStreamPlayer2D" parent="."]
+stream = ExtResource("10_grito")
+volume_db = -2.0
+max_distance = 900.0
+
+[node name="audio_dano" type="AudioStreamPlayer2D" parent="."]
+stream = ExtResource("11_dano")
+volume_db = -2.0
+max_distance = 900.0
+
+[node name="audio_morte" type="AudioStreamPlayer2D" parent="."]
+stream = ExtResource("12_morte")
+volume_db = 0.0
+max_distance = 900.0

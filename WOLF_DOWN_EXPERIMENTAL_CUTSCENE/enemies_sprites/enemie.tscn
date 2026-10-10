@@ -4,6 +4,11 @@
 [ext_resource type="Texture2D" uid="uid://bwpuog7yfek0j" path="res://enemies_sprites/run1.png" id="3_5mxet"]
 [ext_resource type="AudioStream" uid="uid://cgboygyrevgsg" path="res://enemies_sprites/freesound_crunchpixstudio-attack-release-384909.mp3" id="4_m6mhs"]
 [ext_resource type="AudioStream" uid="uid://bbqc1jieqr257" path="res://enemies_sprites/dragon-studio-punch-431475.mp3" id="5_t47o5"]
+[ext_resource type="AudioStream" path="res://enemies_sprites/sons_aranha/aranha_passos.wav" id="6_passos"]
+[ext_resource type="AudioStream" path="res://enemies_sprites/sons_aranha/aranha_chiado.wav" id="7_chiado"]
+[ext_resource type="AudioStream" path="res://enemies_sprites/sons_aranha/aranha_bote.wav" id="8_bote"]
+[ext_resource type="AudioStream" path="res://enemies_sprites/sons_aranha/aranha_dano.wav" id="9_dano"]
+[ext_resource type="AudioStream" path="res://enemies_sprites/sons_aranha/aranha_morte.wav" id="10_morte"]
 
 [sub_resource type="Animation" id="Animation_reset"]
 length = 0.001
@@ -73,3 +78,28 @@ pitch_scale = 2.08
 
 [node name="collision" type="CollisionShape2D" parent="."]
 shape = SubResource("CircleShape2D_e3sk5")
+
+[node name="audio_passos" type="AudioStreamPlayer2D" parent="."]
+stream = ExtResource("6_passos")
+volume_db = -10.0
+max_distance = 450.0
+
+[node name="audio_chiado" type="AudioStreamPlayer2D" parent="."]
+stream = ExtResource("7_chiado")
+volume_db = -3.0
+max_distance = 700.0
+
+[node name="audio_bote" type="AudioStreamPlayer2D" parent="."]
+stream = ExtResource("8_bote")
+volume_db = -1.0
+max_distance = 800.0
+
+[node name="audio_dano" type="AudioStreamPlayer2D" parent="."]
+stream = ExtResource("9_dano")
+volume_db = -2.0
+max_distance = 800.0
+
+[node name="audio_morte" type="AudioStreamPlayer2D" parent="."]
+stream = ExtResource("10_morte")
+volume_db = 0.0
+max_distance = 900.0
