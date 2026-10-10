@@ -1,14 +1,13 @@
 [gd_scene format=3 uid="uid://dv1dj35dhswch"]
 
-[ext_resource type="Script" path="res://enemies_sprites/enemie.gd" id="1_v7gyu"]
+[ext_resource type="Script" uid="uid://drqyt6w7061m5" path="res://enemies_sprites/enemie.gd" id="1_v7gyu"]
 [ext_resource type="Texture2D" uid="uid://bwpuog7yfek0j" path="res://enemies_sprites/run1.png" id="3_5mxet"]
-[ext_resource type="AudioStream" uid="uid://cgboygyrevgsg" path="res://enemies_sprites/freesound_crunchpixstudio-attack-release-384909.mp3" id="4_m6mhs"]
 [ext_resource type="AudioStream" uid="uid://bbqc1jieqr257" path="res://enemies_sprites/dragon-studio-punch-431475.mp3" id="5_t47o5"]
-[ext_resource type="AudioStream" path="res://enemies_sprites/sons_aranha/aranha_passos.wav" id="6_passos"]
-[ext_resource type="AudioStream" path="res://enemies_sprites/sons_aranha/aranha_chiado.wav" id="7_chiado"]
-[ext_resource type="AudioStream" path="res://enemies_sprites/sons_aranha/aranha_bote.wav" id="8_bote"]
-[ext_resource type="AudioStream" path="res://enemies_sprites/sons_aranha/aranha_dano.wav" id="9_dano"]
-[ext_resource type="AudioStream" path="res://enemies_sprites/sons_aranha/aranha_morte.wav" id="10_morte"]
+[ext_resource type="AudioStream" uid="uid://cdqqe4wgs022x" path="res://enemies_sprites/sons_aranha/aranha_passos.wav" id="6_passos"]
+[ext_resource type="AudioStream" uid="uid://c060dusfdn07g" path="res://enemies_sprites/sons_aranha/aranha_chiado.wav" id="7_chiado"]
+[ext_resource type="AudioStream" uid="uid://dsllqjfp7php5" path="res://enemies_sprites/sons_aranha/aranha_bote.wav" id="8_bote"]
+[ext_resource type="AudioStream" uid="uid://cu4q6alny0l8e" path="res://enemies_sprites/sons_aranha/aranha_dano.wav" id="9_dano"]
+[ext_resource type="AudioStream" uid="uid://dl72ul4cug7pa" path="res://enemies_sprites/sons_aranha/aranha_morte.wav" id="10_morte"]
 
 [sub_resource type="Animation" id="Animation_reset"]
 length = 0.001
@@ -44,62 +43,57 @@ tracks/0/keys = {
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_lrmmr"]
 _data = {
-"RESET": SubResource("Animation_reset"),
-"run": SubResource("Animation_run")
+&"RESET": SubResource("Animation_reset"),
+&"run": SubResource("Animation_run")
 }
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_e3sk5"]
 radius = 12.0
 
-[node name="enemie" type="CharacterBody2D" groups=["enemies"]]
+[node name="enemie" type="CharacterBody2D" unique_id=473846074 groups=["enemies"]]
 z_index = 1
 collision_layer = 2
 collision_mask = 9
 script = ExtResource("1_v7gyu")
 
-[node name="texture" type="Sprite2D" parent="."]
+[node name="texture" type="Sprite2D" parent="." unique_id=378624914]
 position = Vector2(0, -1)
 scale = Vector2(0.16, 0.16)
 texture = ExtResource("3_5mxet")
 hframes = 6
 
-[node name="animation" type="AnimationPlayer" parent="."]
-libraries = {
-"": SubResource("AnimationLibrary_lrmmr")
-}
+[node name="animation" type="AnimationPlayer" parent="." unique_id=1038492707]
+libraries/ = SubResource("AnimationLibrary_lrmmr")
 
-[node name="audio_hit_fogo" type="AudioStreamPlayer2D" parent="."]
-stream = ExtResource("4_m6mhs")
-volume_db = 18.0
-
-[node name="audio_hit_faca" type="AudioStreamPlayer2D" parent="."]
+[node name="audio_hit_faca" type="AudioStreamPlayer2D" parent="." unique_id=1482033785]
 stream = ExtResource("5_t47o5")
 pitch_scale = 2.08
 
-[node name="collision" type="CollisionShape2D" parent="."]
+[node name="collision" type="CollisionShape2D" parent="." unique_id=1040642949]
 shape = SubResource("CircleShape2D_e3sk5")
 
-[node name="audio_passos" type="AudioStreamPlayer2D" parent="."]
+[node name="audio_passos" type="AudioStreamPlayer2D" parent="." unique_id=1862458640]
 stream = ExtResource("6_passos")
 volume_db = -10.0
 max_distance = 450.0
 
-[node name="audio_chiado" type="AudioStreamPlayer2D" parent="."]
+[node name="audio_chiado" type="AudioStreamPlayer2D" parent="." unique_id=1523117437]
 stream = ExtResource("7_chiado")
 volume_db = -3.0
 max_distance = 700.0
 
-[node name="audio_bote" type="AudioStreamPlayer2D" parent="."]
+[node name="audio_bote" type="AudioStreamPlayer2D" parent="." unique_id=1589055065]
 stream = ExtResource("8_bote")
 volume_db = -1.0
 max_distance = 800.0
 
-[node name="audio_dano" type="AudioStreamPlayer2D" parent="."]
+[node name="audio_dano" type="AudioStreamPlayer2D" parent="." unique_id=1950654952]
 stream = ExtResource("9_dano")
 volume_db = -2.0
 max_distance = 800.0
 
-[node name="audio_morte" type="AudioStreamPlayer2D" parent="."]
+[node name="audio_morte" type="AudioStreamPlayer2D" parent="." unique_id=1244927115]
 stream = ExtResource("10_morte")
-volume_db = 0.0
 max_distance = 900.0
+
+[node name="audio_hit_fogo" type="AudioStreamPlayer2D" parent="."]

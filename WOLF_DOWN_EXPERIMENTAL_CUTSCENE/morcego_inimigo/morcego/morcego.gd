@@ -24,7 +24,7 @@ var _color_original: Color = Color.WHITE
 
 @onready var texture: Sprite2D = $texture
 @onready var animation: AnimationPlayer = $animation
-@onready var audio_hit_fogo: AudioStreamPlayer2D = $audio_hit_fogo
+
 @onready var audio_hit_faca: AudioStreamPlayer2D = $audio_hit_faca
 @onready var audio_asas: AudioStreamPlayer2D = $audio_asas
 @onready var audio_grito: AudioStreamPlayer2D = $audio_grito
@@ -92,8 +92,6 @@ func take_damage(amount: int, source_position: Vector2, melee: bool = false) -> 
 	ParticleFX.hit_spark(get_tree().current_scene, global_position)
 	if melee:
 		audio_hit_faca.play()
-	else:
-		audio_hit_fogo.play()
 	if health <= 0:
 		die()
 

@@ -62,6 +62,9 @@ var has_revolver: bool = false
 const PISTOL_SFX_PATH := "res://bullet/pistol_shot.wav"
 const REVOLVER_SFX_PATH := "res://bullet/gunshot_38.wav"
 const SHOT_POOL_SIZE := 6
+# SOM DA RECARGA do .38 lendário (dura ~1.3s, igual REVOLVER_RELOAD_TIME)
+const REVOLVER_RELOAD_SFX_PATH := "res://leveis/sons/revolver_lendario_reload.wav"
+var _sfx_reload: AudioStreamPlayer
 var _sfx_pistol: AudioStream
 var _sfx_revolver: AudioStream
 var _sfx_pool: Array[AudioStreamPlayer] = []
@@ -358,6 +361,15 @@ func _setup_shot_audio() -> void:
 		var p := AudioStreamPlayer.new()
 		add_child(p)
 		_sfx_pool.append(p)
+	# Player dedicado à recarga (assim dá para interromper se trocar de arma)
+	_sfx_reload = AudioStreamPlayer.new()
+	_sfx_reload.volume_db = -3.0
+	if ResourceLoader.exists(REVOLVER_RELOAD_SFX_PATH):
+		var rs := load(REVOLVER_RELOAD_SFX_PATH) as AudioStream
+		if rs is AudioStreamWAV:
+			rs.loop_mode = AudioStreamWAV.LOOP_DISABLED
+		_sfx_reload.stream = rs
+	add_child(_sfx_reload)
 
 
 func _play_shot(stream: AudioStream, volume_db: float, pitch: float) -> void:
@@ -479,6 +491,8 @@ func equip_revolver() -> void:
 
 func _toggle_weapon() -> void:
 	revolver_equipped = not revolver_equipped
+	if is_instance_valid(_sfx_reload):
+		_sfx_reload.stop()   # trocou de arma no meio da recarga: corta o som
 	_reloading = false
 	reload_progress = 0.0
 	_apply_weapon_visual()
@@ -506,6 +520,8 @@ func _start_reload() -> void:
 	_reloading = true
 	_reload_left = REVOLVER_RELOAD_TIME
 	reload_progress = 0.01
+	if is_instance_valid(_sfx_reload) and _sfx_reload.stream != null:
+		_sfx_reload.play()
 
 
 func _finish_reload() -> void:

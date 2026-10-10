@@ -5,6 +5,10 @@ extends CanvasLayer
 
 const FONT_BOLD: FontFile = preload("res://fonts/MountainsofChristmas-Bold.ttf")
 const OUTLINE_COL := Color(0.08, 0.0, 0.10)
+const WEAPON_HUD := preload("res://leveis/weapon_hud.gd")
+## Nomes de propriedade do jogador que a HUD tenta ler para saber a arma atual
+## (só é usado se o GameManager NÃO tiver o sinal `weapon_changed`).
+const WEAPON_PROPS := ["current_weapon", "weapon", "arma_atual", "arma", "selected_weapon", "weapon_index", "current_gun"]
 
 @onready var hp: Label = $HP
 @onready var ammo_bar: TextureProgressBar = $"barra_munição/barra_municao"
@@ -14,6 +18,8 @@ var _score_label: Label
 var _objective_box: VBoxContainer
 var _banner: Label
 var _reward_label: Label
+var _weapon_hud: Control
+var _weapon_signal_ok: bool = false
 
 
 func _ready() -> void:
@@ -22,18 +28,59 @@ func _ready() -> void:
 	$"barra_munição".visible = false
 	_player_hud = PlayerHUD.new()
 	add_child(_player_hud)
+	_weapon_hud = WEAPON_HUD.new()
+	add_child(_weapon_hud)
 
+	_weapon_hud.set_unlocked(&"lendario", bool(GameManager.get_meta("has_revolver", false)))
 	_build_extra_ui()
 	GameManager.player_health_changed.connect(update_health)
 	GameManager.ammo_changed.connect(update_ammo)
 	GameManager.score_changed.connect(update_score)
 	GameManager.score_life_reward.connect(_on_score_life_reward)
+	if GameManager.has_signal("weapon_changed"):
+		GameManager.weapon_changed.connect(set_weapon)
+		_weapon_signal_ok = true
 	ObjectiveManager.objective_changed.connect(_refresh_objective)
 	ObjectiveManager.objective_completed.connect(_on_objective_completed)
 	update_health(GameManager.player_hp, GameManager.player_max_hp)
 	update_score(GameManager.score)
 	_update_reward_progress()
 	_refresh_objective(ObjectiveManager.title, ObjectiveManager.items, ObjectiveManager.done)
+
+
+func _process(_delta: float) -> void:
+	if not is_instance_valid(Global.Player):
+		return
+	var player: Object = Global.Player
+	# .38 lendário: o slot só aparece depois que o jogador libera o revólver
+	var has_rev: Variant = player.get("has_revolver")
+	if has_rev != null:
+		_weapon_hud.set_unlocked(&"lendario", bool(has_rev))
+		# Arma na mão: revólver equipado = lendário ligado / antigo desligado (e vice-versa)
+		var rev_eq: Variant = player.get("revolver_equipped")
+		if rev_eq != null and not _weapon_signal_ok:
+			set_weapon(1 if (bool(has_rev) and bool(rev_eq)) else 0)
+			return
+	if _weapon_signal_ok:
+		return
+	for prop in WEAPON_PROPS:
+		var value: Variant = player.get(prop)
+		if value != null:
+			set_weapon(value)
+			return
+
+
+## Atualiza o destaque da arma. Aceita índice (0 = antigo, 1 = lendário)
+## ou texto/nome (qualquer coisa com "lend"/"legend" vira lendário).
+func set_weapon(weapon: Variant) -> void:
+	_weapon_hud.select_weapon(_weapon_id(weapon))
+
+
+func _weapon_id(weapon: Variant) -> StringName:
+	if weapon is int:
+		return &"lendario" if weapon == 1 else &"antigo"
+	var text := str(weapon).to_lower()
+	return &"lendario" if ("lend" in text or "legend" in text) else &"antigo"
 
 
 # Mantidos por compatibilidade com os sinais (a nova HUD lê direto do jogador).
