@@ -1,14 +1,13 @@
 [gd_scene format=3 uid="uid://b4aeej7gbj8jr"]
 
 [ext_resource type="Script" uid="uid://dgfeuniryqo47" path="res://leveis/level_gaiola.gd" id="1_gaiola"]
-[ext_resource type="Texture2D" path="res://gaiola/sprites/arena_gaiola.png" id="2_arena"]
-[ext_resource type="PackedScene" path="res://player_sprites/wolf.tscn" id="3_wolf"]
-[ext_resource type="PackedScene" path="res://leveis/inteface.tscn" id="4_hud"]
-[ext_resource type="PackedScene" path="res://leveis/transition_screen.tscn" id="5_trans"]
-[ext_resource type="AudioStream" path="res://audio/musica_halloween.wav" id="6_music"]
-[ext_resource type="Texture2D" path="res://bullet/light2D-gradient.png" id="7_light"]
-[ext_resource type="Texture2D" path="res://gaiola/sprites/cage_bars.png" id="8_bars"]
-[ext_resource type="Texture2D" path="res://gaiola/sprites/revolver.png" id="9_revolver"]
+[ext_resource type="Texture2D" uid="uid://gatg4ebl48k1" path="res://gaiola/sprites/arena_gaiola.png" id="2_arena"]
+[ext_resource type="PackedScene" uid="uid://ysa8nimoiash" path="res://player_sprites/wolf.tscn" id="3_wolf"]
+[ext_resource type="PackedScene" uid="uid://c0eloinuerpxy" path="res://leveis/inteface.tscn" id="4_hud"]
+[ext_resource type="PackedScene" uid="uid://cs4s2l8cqycjb" path="res://leveis/transition_screen.tscn" id="5_trans"]
+[ext_resource type="Texture2D" uid="uid://cxsbg5eyuc2i5" path="res://bullet/light2D-gradient.png" id="7_light"]
+[ext_resource type="Texture2D" uid="uid://beus51o2jdrhm" path="res://gaiola/sprites/cage_bars.png" id="8_bars"]
+[ext_resource type="Texture2D" uid="uid://cpryhadaxe0oe" path="res://gaiola/sprites/revolver.png" id="9_revolver"]
 
 [sub_resource type="RectangleShape2D" id="shape_top"]
 size = Vector2(896, 72)
@@ -22,160 +21,159 @@ size = Vector2(32, 640)
 [sub_resource type="RectangleShape2D" id="shape_cage"]
 size = Vector2(60, 40)
 
-[node name="level_gaiola" type="Node2D" groups=["level"]]
+[node name="level_gaiola" type="Node2D" unique_id=1972939870 groups=["level"]]
 script = ExtResource("1_gaiola")
 
-[node name="arena" type="Sprite2D" parent="."]
+[node name="arena" type="Sprite2D" parent="." unique_id=81125514]
 z_index = -5
-centered = false
 texture = ExtResource("2_arena")
+centered = false
 
-[node name="walls" type="StaticBody2D" parent="."]
+[node name="walls" type="StaticBody2D" parent="." unique_id=1260540830]
 collision_layer = 4
 collision_mask = 0
 
-[node name="top" type="CollisionShape2D" parent="walls"]
+[node name="top" type="CollisionShape2D" parent="walls" unique_id=553858761]
 position = Vector2(448, 36)
 shape = SubResource("shape_top")
 
-[node name="bottom" type="CollisionShape2D" parent="walls"]
+[node name="bottom" type="CollisionShape2D" parent="walls" unique_id=411678038]
 position = Vector2(448, 624)
 shape = SubResource("shape_bottom")
 
-[node name="left" type="CollisionShape2D" parent="walls"]
+[node name="left" type="CollisionShape2D" parent="walls" unique_id=239332380]
 position = Vector2(16, 320)
 shape = SubResource("shape_side")
 
-[node name="right" type="CollisionShape2D" parent="walls"]
+[node name="right" type="CollisionShape2D" parent="walls" unique_id=1248506738]
 position = Vector2(880, 320)
 shape = SubResource("shape_side")
 
-[node name="cage_block" type="CollisionShape2D" parent="walls"]
+[node name="cage_block" type="CollisionShape2D" parent="walls" unique_id=1320559101]
 position = Vector2(448, 90)
 shape = SubResource("shape_cage")
 
-[node name="Cage" type="Node2D" parent="."]
+[node name="Cage" type="Node2D" parent="." unique_id=1253606249]
 position = Vector2(448, 84)
 
-[node name="Revolver" type="Sprite2D" parent="Cage"]
+[node name="Revolver" type="Sprite2D" parent="Cage" unique_id=1796106712]
 texture_filter = 1
 position = Vector2(0, 8)
 texture = ExtResource("9_revolver")
 
-[node name="Bars" type="Sprite2D" parent="Cage"]
+[node name="Bars" type="Sprite2D" parent="Cage" unique_id=951467794]
 texture_filter = 1
 texture = ExtResource("8_bars")
 
-[node name="CageLight" type="PointLight2D" parent="Cage"]
+[node name="CageLight" type="PointLight2D" parent="Cage" unique_id=143153968]
 position = Vector2(0, 8)
 color = Color(1, 0.78, 0.3, 1)
 energy = 0.7
 texture = ExtResource("7_light")
 texture_scale = 0.6
 
-[node name="wolf" parent="." instance=ExtResource("3_wolf")]
+[node name="wolf" parent="." unique_id=624203850 instance=ExtResource("3_wolf")]
 position = Vector2(448, 560)
 
-[node name="CanvasModulate" type="CanvasModulate" parent="."]
+[node name="CanvasModulate" type="CanvasModulate" parent="." unique_id=422706758]
 color = Color(0.66, 0.62, 0.9, 1)
 
-[node name="music_background" type="AudioStreamPlayer2D" parent="."]
-stream = ExtResource("6_music")
+[node name="music_background" type="AudioStreamPlayer2D" parent="." unique_id=1580175825]
 autoplay = true
 
-[node name="lights" type="Node2D" parent="."]
+[node name="lights" type="Node2D" parent="." unique_id=804897694]
 
-[node name="sconce_l1" type="PointLight2D" parent="lights"]
+[node name="sconce_l1" type="PointLight2D" parent="lights" unique_id=2104802427]
 position = Vector2(16, 176)
 color = Color(1, 0.55, 0.2, 1)
 energy = 1.4
 texture = ExtResource("7_light")
 texture_scale = 0.7
 
-[node name="sconce_r1" type="PointLight2D" parent="lights"]
+[node name="sconce_r1" type="PointLight2D" parent="lights" unique_id=1554350576]
 position = Vector2(880, 176)
 color = Color(1, 0.55, 0.2, 1)
 energy = 1.4
 texture = ExtResource("7_light")
 texture_scale = 0.7
 
-[node name="sconce_l2" type="PointLight2D" parent="lights"]
+[node name="sconce_l2" type="PointLight2D" parent="lights" unique_id=1618969780]
 position = Vector2(16, 336)
 color = Color(1, 0.55, 0.2, 1)
 energy = 1.4
 texture = ExtResource("7_light")
 texture_scale = 0.7
 
-[node name="sconce_r2" type="PointLight2D" parent="lights"]
+[node name="sconce_r2" type="PointLight2D" parent="lights" unique_id=1695017719]
 position = Vector2(880, 336)
 color = Color(1, 0.55, 0.2, 1)
 energy = 1.4
 texture = ExtResource("7_light")
 texture_scale = 0.7
 
-[node name="sconce_l3" type="PointLight2D" parent="lights"]
+[node name="sconce_l3" type="PointLight2D" parent="lights" unique_id=1984706501]
 position = Vector2(16, 496)
 color = Color(1, 0.55, 0.2, 1)
 energy = 1.4
 texture = ExtResource("7_light")
 texture_scale = 0.7
 
-[node name="sconce_r3" type="PointLight2D" parent="lights"]
+[node name="sconce_r3" type="PointLight2D" parent="lights" unique_id=1301089822]
 position = Vector2(880, 496)
 color = Color(1, 0.55, 0.2, 1)
 energy = 1.4
 texture = ExtResource("7_light")
 texture_scale = 0.7
 
-[node name="sconce_top1" type="PointLight2D" parent="lights"]
+[node name="sconce_top1" type="PointLight2D" parent="lights" unique_id=796176116]
 position = Vector2(176, 34)
 color = Color(0.78, 0.38, 1, 1)
 energy = 1.5
 texture = ExtResource("7_light")
 texture_scale = 0.8
 
-[node name="sconce_top2" type="PointLight2D" parent="lights"]
+[node name="sconce_top2" type="PointLight2D" parent="lights" unique_id=942436709]
 position = Vector2(320, 34)
 color = Color(0.78, 0.38, 1, 1)
 energy = 1.5
 texture = ExtResource("7_light")
 texture_scale = 0.8
 
-[node name="sconce_top3" type="PointLight2D" parent="lights"]
+[node name="sconce_top3" type="PointLight2D" parent="lights" unique_id=689010675]
 position = Vector2(576, 34)
 color = Color(0.78, 0.38, 1, 1)
 energy = 1.5
 texture = ExtResource("7_light")
 texture_scale = 0.8
 
-[node name="sconce_top4" type="PointLight2D" parent="lights"]
+[node name="sconce_top4" type="PointLight2D" parent="lights" unique_id=487674984]
 position = Vector2(720, 34)
 color = Color(0.78, 0.38, 1, 1)
 energy = 1.5
 texture = ExtResource("7_light")
 texture_scale = 0.8
 
-[node name="candle_l" type="PointLight2D" parent="lights"]
+[node name="candle_l" type="PointLight2D" parent="lights" unique_id=843974352]
 position = Vector2(348, 70)
 color = Color(1, 0.55, 0.2, 1)
 energy = 1.1
 texture = ExtResource("7_light")
 texture_scale = 0.5
 
-[node name="candle_r" type="PointLight2D" parent="lights"]
+[node name="candle_r" type="PointLight2D" parent="lights" unique_id=880842637]
 position = Vector2(548, 70)
 color = Color(1, 0.55, 0.2, 1)
 energy = 1.1
 texture = ExtResource("7_light")
 texture_scale = 0.5
 
-[node name="rune_light" type="PointLight2D" parent="lights"]
+[node name="rune_light" type="PointLight2D" parent="lights" unique_id=102002112]
 position = Vector2(448, 372)
 color = Color(0.9, 0.12, 0.25, 1)
 energy = 0.6
 texture = ExtResource("7_light")
 texture_scale = 1.5
 
-[node name="inteface" parent="." instance=ExtResource("4_hud")]
+[node name="inteface" parent="." unique_id=1926798377 instance=ExtResource("4_hud")]
 
-[node name="transition_screen" parent="." instance=ExtResource("5_trans")]
+[node name="transition_screen" parent="." unique_id=159680368 instance=ExtResource("5_trans")]

@@ -2229,14 +2229,6 @@ autoplay = true
 
 [node name="inteface" parent="." unique_id=1866898600 instance=ExtResource("9_7f4vx")]
 
-[node name="arvore" parent="." unique_id=1645191896 instance=ExtResource("12_4odyh")]
-z_index = 1
-position = Vector2(368, 380)
-
-[node name="arvore2" parent="." unique_id=1835229105 instance=ExtResource("12_4odyh")]
-z_index = 1
-position = Vector2(793, 411)
-
 [node name="abobora" parent="." unique_id=55164460 instance=ExtResource("13_qw38i")]
 position = Vector2(184, 190)
 
@@ -2256,7 +2248,15 @@ position = Vector2(618, 548)
 position = Vector2(620, 331)
 
 [node name="wolf" parent="." unique_id=875706564 instance=ExtResource("2_ibcge")]
-position = Vector2(188, 190)
+position = Vector2(629, 378)
+
+[node name="arvore" parent="." unique_id=1645191896 instance=ExtResource("12_4odyh")]
+z_index = 1
+position = Vector2(368, 380)
+
+[node name="arvore2" parent="." unique_id=1835229105 instance=ExtResource("12_4odyh")]
+z_index = 1
+position = Vector2(793, 411)
 
 [node name="transition_screen" parent="." unique_id=110931803 instance=ExtResource("14_fmuur")]
 

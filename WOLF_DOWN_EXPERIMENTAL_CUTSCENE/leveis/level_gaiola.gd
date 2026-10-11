@@ -42,6 +42,10 @@ const PLINTHS: Array[Vector2] = [Vector2(208.0, 262.0), Vector2(448.0, 330.0), V
 ## Partículas neon de ambiente (0 = desligado, 1 = padrão, 2 = mais cheio).
 @export var neon_enabled: bool = true
 @export_range(0.0, 2.0, 0.05) var neon_intensity: float = 1.0
+## MÚSICA E SONS (arquivos em res://audio/gaiola/). Volumes em dB (0 = original, negativo = mais baixo).
+@export var music_enabled: bool = true
+@export var music_volume_db: float = -8.0
+@export var sfx_volume_db: float = 0.0
 
 @onready var player: Node2D = $wolf
 @onready var _cage: Node2D = $Cage
@@ -62,6 +66,7 @@ var _current: StoneDemon
 var _rev_rest_y: float = 0.0
 var _second_wave: bool = false
 var _second_wave_left: int = 0
+var _audio: GaiolaAudio
 
 
 # ==============================================================================
@@ -89,6 +94,7 @@ func _ready() -> void:
 	_build_locks()
 	_build_statues()
 	_rev_rest_y = _revolver.position.y
+	_setup_audio()
 	_run()
 
 
@@ -102,6 +108,17 @@ func _setup_neon() -> void:
 	amb.fixed_rect = Rect2(Vector2.ZERO, ARENA_SIZE)
 	amb.intensity = neon_intensity
 	add_child(amb)
+
+
+## Música: ambiente sombrio antes da luta -> tema de desafio -> tema da ressurreição -> fanfarra.
+func _setup_audio() -> void:
+	GaiolaAudio.sfx_offset_db = sfx_volume_db
+	_audio = GaiolaAudio.new()
+	_audio.name = "GaiolaAudio"
+	_audio.music_volume_db = music_volume_db
+	add_child(_audio)
+	if music_enabled:
+		_audio.play_music("ambiente", 2.0)
 
 
 func _limit_camera() -> void:
@@ -190,6 +207,8 @@ func _run() -> void:
 		_overlay.boss_ghost = 1.0
 		_overlay.boss_on = true
 		_overlay.flash = 0.6
+		if i == 0 and music_enabled:
+			_audio.play_music("desafio", 1.0)
 		d.awaken()
 		await d.died
 		_overlay.boss_on = false
@@ -216,15 +235,21 @@ func _run() -> void:
 ## Os guardiões voltam dos mortos TODOS JUNTOS; os cadeados se refazem e cada morte parte um de novo.
 func _resurrection() -> void:
 	_say("O ÚLTIMO GUARDIÃO CAI...", 2.0)
+	if music_enabled:
+		_audio.play_music("ambiente", 2.0)
 	await _wait(2.6)
 	_say("MAS A MALDIÇÃO OS CHAMA DE VOLTA!", 2.8)
+	GaiolaAudio.sfx_ui(self, "resurrection_call", 2.0)
 	_overlay.flash = 1.0
 	await _wait(1.6)
+	if music_enabled:
+		_audio.play_music("ressurreicao", 0.4)
 	ObjectiveManager.set_objective("Derrote os guardiões ressuscitados")
 
 	# cadeados se fecham de novo
 	_locks_broken = 0
 	_overlay.locks_broken = 0
+	GaiolaAudio.sfx_ui(self, "lock_reform")
 	for s in _locks:
 		if is_instance_valid(s):
 			ParticleFX.pickup(self, s.global_position)
@@ -252,6 +277,8 @@ func _resurrection() -> void:
 	_second_wave = false
 	_overlay.boss_on = false
 	_overlay.flash = 0.6
+	if music_enabled:
+		_audio.play_music("ambiente", 2.5)
 	await _wait(1.0)
 
 
@@ -265,6 +292,7 @@ func _on_resurrected_died(_d: StoneDemon) -> void:
 
 
 func _break_lock(i: int) -> void:
+	GaiolaAudio.sfx_ui(self, "lock_break")
 	_locks_broken = i + 1
 	_overlay.locks_broken = _locks_broken
 	if i < _locks.size() and is_instance_valid(_locks[i]):
@@ -273,6 +301,7 @@ func _break_lock(i: int) -> void:
 
 
 func _open_cage() -> void:
+	GaiolaAudio.sfx_ui(self, "cage_open")
 	ParticleFX.objective_complete(self, _cage.global_position)
 	var tw := create_tween().set_parallel(true)
 	tw.tween_property(_bars, "position:y", -44.0, 1.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
@@ -293,6 +322,9 @@ func _give_reward() -> void:
 
 func _collect() -> void:
 	_picked = true
+	GaiolaAudio.sfx_ui(self, "revolver_pickup")
+	if music_enabled:
+		_audio.play_music("vitoria", 0.3, false)
 	var pl = Global.Player
 	if is_instance_valid(pl):
 		pl.equip_revolver()

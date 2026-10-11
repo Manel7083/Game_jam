@@ -10,6 +10,17 @@ const DESIGN_H: float = 1080.0
 const TYPE_SPEED: float = 0.028
 const NEXT_LEVEL_INDEX: int = 1 # 0 = Tutorial, 1 = Level 1 (a cena de controles já ensina o básico)
 const FONT_BOLD: FontFile = preload("res://fonts/MountainsofChristmas-Bold.ttf")
+
+# Sprites do Lobo (os mesmos do jogo). Ordem: 0 = parado, 1 = andando, 2 = ataque (facada).
+const SPR_DIR: String = "res://player_sprites/"
+const SPR_FILES: Array[String] = ["foxy_stop.png", "foxy_walk.png", "foxy_ataque.png"]
+const SPR_FRAMES: Array[int] = [6, 5, 8]
+const SPR_FPS: Array[float] = [8.0, 10.0, 0.0]
+const SPR_SIZE: float = 280.0                      # tamanho do quadro na demo (o lobo ocupa ~31% dele)
+const SPR_ANCHOR: Vector2 = Vector2(0.49, 0.53)    # centro do corpo dentro do quadro
+const GUN_PUSH: float = 20.0                       # afasta a arma do corpo do sprite
+var _spr_tex: Array = [null, null, null]
+var _cam_xf: Transform2D = Transform2D.IDENTITY
 const MUSIC_PATH: String = "res://leveis/moonlight_hollow.wav"
 const AUDIO_DIR: String = "res://audio/"
 const THUNDER_PATH: String = "res://audio/thunder.wav"
@@ -41,7 +52,7 @@ const SHOT_DURATION: Array[float] = [
 	12.5, # 5 - Drácula Despertado
 	12.5, # 6 - O Caçador
 	12.5, # 7 - Olho do Lobo
-	12.5, # 8 - Controles
+	3600.0, # 8 - Manual do Caçador (espera o jogador; não avança sozinho)
 	12.5  # 9 - Título Final
 ]
 
@@ -85,14 +96,14 @@ var _story: Array[String] = [
 ]
 
 var _titles: Array[String] = [
-	"WOLF DOWN — A LENDA",
+	"A LENDA",
 	"AS SEPULTURAS SE ABREM",
 	"VILAREJO DE SANGUE",
 	"O CASTELO DESPERTA",
 	"O SELO SE QUEBRA",
 	"A ESCURIDÃO RETORNA",
 	"O CAÇADOR",
-	"O FARDO DO LOBO",
+	"O FARDO DO CAÇADOR",
 	"COMO SOBREVIVER",
 	"A CAÇADA COMEÇA"
 ]
@@ -114,6 +125,7 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if force_fullscreen:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+	_load_sprites()
 	_make_textures()
 	_make_styles()
 	_build_ui()
@@ -127,6 +139,8 @@ func _process(delta: float) -> void:
 		return
 	_elapsed += delta
 	_total += delta
+	if _shot == 8:
+		_page_t += delta
 	_update_thunder(delta)
 
 	var current_text: String = _story[_shot]
@@ -138,7 +152,10 @@ func _process(delta: float) -> void:
 			_typing_index = mini(_typing_index + steps, current_text.length())
 			_story_label.text = current_text.substr(0, _typing_index)
 
-	_progress_label.text = "%d / %d" % [_shot + 1, _story.size()]
+	if _shot == 8:
+		_progress_label.text = "MANUAL %d / %d" % [_manual_page + 1, MANUAL_PAGES]
+	else:
+		_progress_label.text = "%d / %d" % [_shot + 1, _story.size()]
 	_update_fade()
 	queue_redraw()
 
@@ -158,6 +175,16 @@ func _update_fade() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if _finished:
 		return
+	if _shot == 8:
+		if event.is_action_pressed("ui_left") or (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT):
+			if _manual_page > 0:
+				_manual_set_page(_manual_page - 1)
+			get_viewport().set_input_as_handled()
+			return
+		if event.is_action_pressed("ui_right"):
+			_next_shot()
+			get_viewport().set_input_as_handled()
+			return
 	if event.is_action_pressed("ui_accept"):
 		_next_shot()
 		get_viewport().set_input_as_handled()
@@ -181,6 +208,9 @@ func _input(event: InputEvent) -> void:
 
 
 func _next_shot() -> void:
+	if _shot == 8 and _manual_page < MANUAL_PAGES - 1:
+		_manual_set_page(_manual_page + 1)
+		return
 	if _typing_index < _story[_shot].length():
 		_typing_index = _story[_shot].length()
 		_story_label.text = _story[_shot]
@@ -204,6 +234,9 @@ func _reset_shot() -> void:
 	_story_label.visible = (_shot != 8)
 	_hint_label.visible = true
 	_progress_label.visible = true
+	_manual_page = 0
+	_page_t = 0.0
+	_update_hint()
 	_play_shot_audio()
 	queue_redraw()
 
@@ -414,7 +447,8 @@ func _draw() -> void:
 	var pan: Vector2 = PAN_TO[_shot] * e
 	var s: float = _scale * zoom
 	var origin: Vector2 = screen * 0.5 - Vector2(_vw * 0.5, DESIGN_H * 0.5) * s + (pan + _camera_shake()) * _scale
-	draw_set_transform_matrix(Transform2D(0.0, Vector2(s, s), 0.0, origin))
+	_cam_xf = Transform2D(0.0, Vector2(s, s), 0.0, origin)
+	draw_set_transform_matrix(_cam_xf)
 
 	match _shot:
 		0: _scene_prologue()
@@ -425,7 +459,7 @@ func _draw() -> void:
 		5: _scene_throne()
 		6: _scene_hunter()
 		7: _scene_wolf_eye()
-		8: _scene_controls()
+		8: _scene_manual()
 		9: _scene_final()
 
 	# --- Pós-processamento em coordenadas de tela ---
@@ -1344,7 +1378,89 @@ func _scene_wolf_eye() -> void:
 
 const GOLD: Color = Color(1.0, 0.82, 0.45)
 const BODY: Color = Color(0.92, 0.90, 0.96)
+const PURPLE: Color = Color(0.75, 0.65, 0.95)
 
+# --- Manual do Caçador (plano 8) ---------------------------------------------
+# O plano 8 virou um manual de varias paginas. Ele nao avanca sozinho: o jogador
+# le no proprio ritmo (ENTER / clique / seta direita = proxima, seta esquerda /
+# botao direito do mouse = voltar). Cada pagina ensina UMA coisa, com uma
+# demonstracao animada ao lado dos controles.
+const MANUAL_PAGES: int = 6
+const DEMO_BULLET_SPEED: float = 900.0
+const HINT_DEFAULT: String = "ENTER / ESPAÇO / CLIQUE — Continuar   |   ESC — Pular"
+
+const MANUAL_TITLES: Array[String] = [
+	"1. ANDAR E MIRAR",
+	"2. ATIRAR",
+	"3. FACADA",
+	"4. DASH",
+	"5. ARMAS E RECARGA",
+	"6. RESUMO RÁPIDO"
+]
+
+const MANUAL_SUBTITLES: Array[String] = [
+	"Uma mão move o Lobo. A outra aponta para onde ele atira.",
+	"Segure o botão de tiro e mantenha a mira no inimigo.",
+	"Inimigo colado em você? Use a faca.",
+	"Um salto rápido para escapar do perigo.",
+	"Troque de arma quando quiser e recarregue o revólver.",
+	"Tudo o que você precisa, em uma tela só."
+]
+
+const MANUAL_TIPS: Array = [
+	[
+		"O Lobo olha sempre para a mira, não para onde anda.",
+		"Dá para andar para um lado e atirar para o outro.",
+		"No controle, incline o analógico direito para mirar."
+	],
+	[
+		"Segure o botão: a pistola atira sem parar.",
+		"Cada tiro gasta energia: dá uns 40 tiros seguidos.",
+		"Pare de atirar por 5 segundos e a energia volta."
+	],
+	[
+		"A faca acerta quem estiver colado no Lobo.",
+		"No golpe o Lobo fica parado e não pode atirar.",
+		"A faca não gasta energia."
+	],
+	[
+		"O Lobo salta para a direção em que você anda.",
+		"Parado, ele salta para o lado em que está virado.",
+		"Durante o salto você não leva dano!",
+		"Depois, a barra roxa recarrega em menos de 1 segundo."
+	],
+	[
+		"O revólver .38 você ganha ao longo da aventura.",
+		"Um clique, um tiro forte. O tambor tem 6 balas.",
+		"Sem balas? Ele recarrega sozinho (ou aperte R)."
+	]
+]
+
+var _manual_page: int = 0
+var _page_t: float = 0.0
+var _hi_a: bool = false     # acao principal da pagina esta acontecendo na demo
+var _hi_b: bool = false     # acao secundaria (mira / recarga)
+var _hi_wasd: int = 0       # bits: 1=W 2=A 4=S 8=D
+
+
+func _manual_set_page(p: int) -> void:
+	_manual_page = clampi(p, 0, MANUAL_PAGES - 1)
+	_page_t = 0.0
+	_update_hint()
+
+
+func _update_hint() -> void:
+	if _shot != 8:
+		_hint_label.text = HINT_DEFAULT
+	elif _manual_page >= MANUAL_PAGES - 1:
+		_hint_label.text = "ENTER / CLIQUE — Começar a caçada   |   SETAS — Voltar   |   ESC — Pular"
+	else:
+		_hint_label.text = "ENTER / CLIQUE — Próxima página   |   SETAS — Navegar   |   ESC — Pular"
+
+
+# ------------------------------------------------------------------------------
+# Elementos de interface (teclas, mouse, analogicos)
+# ------------------------------------------------------------------------------
 
 func _keycap(rect: Rect2, label: String, hi: bool, font_size: int, alpha: float) -> void:
 	draw_style_box(_key_hi_style if hi else _key_style, rect)
@@ -1356,133 +1472,793 @@ func _text(pos: Vector2, text: String, font_size: int, color: Color, alpha: floa
 	draw_string(FONT_BOLD, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_size, Color(color.r, color.g, color.b, color.a * alpha))
 
 
-func _card(rect: Rect2, header: String, delay: float, border: Color) -> float:
-	var a: float = _smooth((_elapsed - delay) / 0.5)
-	var r := Rect2(rect.position + Vector2(0.0, (1.0 - a) * 40.0), rect.size)
-	draw_style_box(_card_style, r)
-	draw_rect(r, Color(border.r, border.g, border.b, border.a * a), false, 3.0)
-	_text(r.position + Vector2(40.0, 70.0), header, 42, GOLD, a)
-	draw_line(r.position + Vector2(40.0, 92.0), r.position + Vector2(r.size.x - 40.0, 92.0), Color(0.55, 0.30, 0.75, 0.6 * a), 2.0)
-	return a
+## Paragrafo com quebra de linha automatica. Devolve a altura ocupada.
+func _para(pos: Vector2, text: String, width: float, font_size: int, color: Color, alpha: float) -> float:
+	draw_multiline_string(FONT_BOLD, pos, text, HORIZONTAL_ALIGNMENT_LEFT, width, font_size, -1, Color(color.r, color.g, color.b, color.a * alpha))
+	return FONT_BOLD.get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, width, font_size).y
 
 
-func _mouse_icon(pos: Vector2, left_hi: bool, alpha: float) -> void:
-	var r := Rect2(pos, Vector2(46.0, 64.0))
+func _card(rect: Rect2, header: String, a: float, border: Color) -> void:
+	draw_style_box(_card_style, rect)
+	draw_rect(rect, Color(border.r, border.g, border.b, border.a), false, 3.0)
+	_text(rect.position + Vector2(40.0, 70.0), header, 42, GOLD, a)
+	draw_line(rect.position + Vector2(40.0, 92.0), rect.position + Vector2(rect.size.x - 40.0, 92.0), Color(0.55, 0.30, 0.75, 0.6 * a), 2.0)
+
+
+func _mouse_icon(pos: Vector2, left_hi: bool, alpha: float, s: float = 1.0) -> void:
+	var r := Rect2(pos, Vector2(46.0, 64.0) * s)
 	draw_style_box(_key_style, r)
 	if left_hi:
 		var pulse: float = 0.5 + 0.5 * sin(_total * 6.0)
-		draw_rect(Rect2(r.position.x + 4.0, r.position.y + 4.0, 17.0, 26.0), Color(1.0, 0.3, 0.35, (0.45 + 0.5 * pulse) * alpha))
+		draw_rect(Rect2(r.position.x + 4.0 * s, r.position.y + 4.0 * s, 17.0 * s, 26.0 * s), Color(1.0, 0.3, 0.35, (0.45 + 0.5 * pulse) * alpha))
 	var line_col := Color(0.6, 0.5, 0.8, alpha)
-	draw_line(Vector2(r.position.x + 23.0, r.position.y + 4.0), Vector2(r.position.x + 23.0, r.position.y + 32.0), line_col, 2.0)
-	draw_line(Vector2(r.position.x + 4.0, r.position.y + 32.0), Vector2(r.end.x - 4.0, r.position.y + 32.0), line_col, 2.0)
+	draw_line(Vector2(r.position.x + 23.0 * s, r.position.y + 4.0 * s), Vector2(r.position.x + 23.0 * s, r.position.y + 32.0 * s), line_col, 2.0)
+	draw_line(Vector2(r.position.x + 4.0 * s, r.position.y + 32.0 * s), Vector2(r.end.x - 4.0 * s, r.position.y + 32.0 * s), line_col, 2.0)
 
 
-func _stick_icon(center: Vector2, hi: bool, alpha: float) -> void:
+func _stick_icon(center: Vector2, hi: bool, alpha: float, s: float = 1.0) -> void:
 	var col := Color(0.60, 0.50, 0.80, alpha)
 	if hi:
 		col = Color(1.0, 0.45, 0.50, alpha)
-	draw_circle(center, 31.0, Color(0.13, 0.10, 0.19, alpha))
-	draw_arc(center, 31.0, 0.0, TAU, 32, col, 3.0)
+	draw_circle(center, 31.0 * s, Color(0.13, 0.10, 0.19, alpha))
+	draw_arc(center, 31.0 * s, 0.0, TAU, 32, col, 3.0)
 	var off := Vector2.ZERO
 	if hi:
-		off = Vector2(cos(_total * 4.0), sin(_total * 4.0)) * 9.0
-	draw_circle(center + off, 15.0, Color(0.45, 0.12, 0.22, alpha) if hi else Color(0.22, 0.17, 0.32, alpha))
-	draw_arc(center + off, 15.0, 0.0, TAU, 24, col, 3.0)
+		off = Vector2(cos(_total * 4.0), sin(_total * 4.0)) * 9.0 * s
+	draw_circle(center + off, 15.0 * s, Color(0.45, 0.12, 0.22, alpha) if hi else Color(0.22, 0.17, 0.32, alpha))
+	draw_arc(center + off, 15.0 * s, 0.0, TAU, 24, col, 3.0)
 
 
 func _pad_badge(rect: Rect2, label: String, hi: bool, alpha: float) -> void:
-	_keycap(rect, label, hi, 30, alpha)
+	_keycap(rect, label, hi, int(rect.size.y * 0.5), alpha)
 
 
-func _pad_square(center: Vector2, hi: bool, alpha: float) -> void:
+func _pad_square(center: Vector2, hi: bool, alpha: float, s: float = 1.0) -> void:
 	var col := Color(0.60, 0.50, 0.80, alpha)
 	if hi:
 		col = Color(1.0, 0.45, 0.50, alpha)
-	draw_circle(center, 31.0, Color(0.45, 0.12, 0.22, alpha) if hi else Color(0.13, 0.10, 0.19, alpha))
-	draw_arc(center, 31.0, 0.0, TAU, 32, col, 3.0)
-	draw_rect(Rect2(center - Vector2(12.0, 12.0), Vector2(24.0, 24.0)), Color(1.0, 0.75, 0.85, alpha), false, 4.0)
+	draw_circle(center, 31.0 * s, Color(0.45, 0.12, 0.22, alpha) if hi else Color(0.13, 0.10, 0.19, alpha))
+	draw_arc(center, 31.0 * s, 0.0, TAU, 32, col, 3.0)
+	draw_rect(Rect2(center - Vector2(12.0, 12.0) * s, Vector2(24.0, 24.0) * s), Color(1.0, 0.75, 0.85, alpha), false, 4.0)
 
 
-func _scene_controls() -> void:
+func _wasd(pos: Vector2, mask: int, a: float, ks: float) -> void:
+	var letters: Array[String] = ["W", "A", "S", "D"]
+	var bits: Array[int] = [1, 2, 4, 8]
+	for i in 4:
+		_keycap(Rect2(pos.x + float(i) * (ks + 6.0), pos.y, ks, ks), letters[i], (mask & bits[i]) != 0, int(ks * 0.55), a)
+
+
+## Etiqueta pequena presa a um ponto da demonstracao (centrada em pos).
+func _chip(pos: Vector2, text: String, col: Color, a: float) -> void:
+	var sz: Vector2 = FONT_BOLD.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 24)
+	var r := Rect2(pos.x - sz.x * 0.5 - 14.0, pos.y - 19.0, sz.x + 28.0, 38.0)
+	draw_rect(r, Color(0.04, 0.02, 0.08, 0.88 * a))
+	draw_rect(r, Color(col.r, col.g, col.b, 0.95 * a), false, 2.0)
+	draw_string(FONT_BOLD, Vector2(r.position.x + 14.0, r.position.y + 28.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 24, Color(col.r, col.g, col.b, a))
+
+
+func _bar(rect: Rect2, frac: float, fill: Color, label: String, a: float) -> void:
+	draw_rect(rect, Color(0.02, 0.01, 0.04, 0.85 * a))
+	draw_rect(Rect2(rect.position + Vector2(3.0, 3.0), Vector2((rect.size.x - 6.0) * clampf(frac, 0.0, 1.0), rect.size.y - 6.0)), Color(fill.r, fill.g, fill.b, a))
+	draw_rect(rect, Color(0.75, 0.62, 0.95, 0.8 * a), false, 2.0)
+	_text(rect.position + Vector2(0.0, -8.0), label, 22, PURPLE, a)
+
+
+# ------------------------------------------------------------------------------
+# Personagens da demonstracao (vistos de cima, como no jogo)
+# ------------------------------------------------------------------------------
+
+func _arena_floor(ar: Rect2, a: float) -> void:
+	draw_rect(ar, Color(0.045, 0.035, 0.07, 1.0))
+	_glow_ellipse(ar.get_center(), ar.size.x * 0.5, ar.size.y * 0.5, Color(0.35, 0.20, 0.50, 0.16 * a))
+	var step: float = 62.0
+	var gx: float = ar.position.x
+	while gx <= ar.end.x:
+		draw_line(Vector2(gx, ar.position.y), Vector2(gx, ar.end.y), Color(0.30, 0.22, 0.45, 0.16 * a), 1.5)
+		gx += step
+	var gy: float = ar.position.y
+	while gy <= ar.end.y:
+		draw_line(Vector2(ar.position.x, gy), Vector2(ar.end.x, gy), Color(0.30, 0.22, 0.45, 0.16 * a), 1.5)
+		gy += step
+	draw_rect(ar, Color(0.55, 0.30, 0.75, 0.55), false, 3.0)
+
+
+func _load_sprites() -> void:
+	for i in SPR_FILES.size():
+		var path: String = SPR_DIR + SPR_FILES[i]
+		if ResourceLoader.exists(path):
+			_spr_tex[i] = load(path)
+
+
+## Lobo com os sprites reais. anim: 0 = parado, 1 = andando, 2 = ataque (usa p, 0..1, como progresso).
+## Os sprites olham para a direita; quando a mira aponta para a esquerda o sprite é espelhado.
+## Se o sprite não for encontrado, volta para o desenho antigo.
+func _wolf_sprite(pos: Vector2, ang: float, a: float, anim: int, t: float, p: float = 0.0) -> void:
+	var tex: Texture2D = _spr_tex[anim]
+	if tex == null:
+		_wolf_top(pos, ang, a, t * 9.0)
+		return
+	var n: int = SPR_FRAMES[anim]
+	var fr: int = 0
+	if anim == 2:
+		fr = clampi(int(p * float(n)), 0, n - 1)
+	else:
+		fr = int(t * SPR_FPS[anim]) % n
+	var fw: float = float(tex.get_width()) / float(n)
+	var fh: float = float(tex.get_height())
+	var flip: float = -1.0 if cos(ang) < 0.0 else 1.0
+	_glow_ellipse(pos + Vector2(0.0, SPR_SIZE * 0.155), SPR_SIZE * 0.22, SPR_SIZE * 0.06, Color(0, 0, 0, 0.5 * a))
+	draw_set_transform_matrix(_cam_xf * Transform2D(0.0, Vector2(flip, 1.0), 0.0, pos))
+	draw_texture_rect_region(tex, Rect2(-SPR_ANCHOR * SPR_SIZE, Vector2(SPR_SIZE, SPR_SIZE)), Rect2(float(fr) * fw, 0.0, fw, fh), Color(1, 1, 1, a))
+	draw_set_transform_matrix(_cam_xf)
+
+
+func _wolf_top(pos: Vector2, ang: float, a: float, walk: float) -> void:
+	var tf := Transform2D(ang, Vector2.ONE, 0.0, pos)
+	var fur := Color(0.34, 0.34, 0.44, a)
+	var fur_hi := Color(0.52, 0.52, 0.64, a)
+	var dark := Color(0.12, 0.11, 0.17, a)
+	_glow_ellipse(pos + Vector2(0.0, 12.0), 52.0, 22.0, Color(0, 0, 0, 0.5 * a))
+	var sw: float = sin(walk) * 6.0
+	draw_colored_polygon(PackedVector2Array([tf * Vector2(-30, -7), tf * Vector2(-66, -16.0 + sw), tf * Vector2(-76, -2.0 + sw), tf * Vector2(-30, 9)]), dark)
+	for sd in [-1.0, 1.0]:
+		var side: float = sd
+		draw_circle(tf * Vector2(24.0 + sw * side, side * 24.0), 8.0, dark)
+		draw_circle(tf * Vector2(-18.0 - sw * side, side * 25.0), 8.0, dark)
+	draw_colored_polygon(PackedVector2Array([
+		tf * Vector2(-38, -18), tf * Vector2(-10, -27), tf * Vector2(20, -23), tf * Vector2(32, -10),
+		tf * Vector2(32, 10), tf * Vector2(20, 23), tf * Vector2(-10, 27), tf * Vector2(-38, 18)]), fur)
+	draw_colored_polygon(PackedVector2Array([tf * Vector2(-34, -8), tf * Vector2(18, -12), tf * Vector2(18, 12), tf * Vector2(-34, 8)]), fur_hi)
+	for sd in [-1.0, 1.0]:
+		var side2: float = sd
+		draw_colored_polygon(PackedVector2Array([tf * Vector2(30, side2 * 13.0), tf * Vector2(22, side2 * 32.0), tf * Vector2(42, side2 * 20.0)]), dark)
+	draw_circle(tf * Vector2(38, 0), 18.0, fur)
+	draw_colored_polygon(PackedVector2Array([tf * Vector2(48, -9), tf * Vector2(70, -4), tf * Vector2(70, 4), tf * Vector2(48, 9)]), fur_hi)
+	draw_circle(tf * Vector2(70, 0), 4.0, Color(0.02, 0.02, 0.03, a))
+	for sd in [-1.0, 1.0]:
+		var ep: Vector2 = tf * Vector2(47.0, float(sd) * 8.0)
+		_glow(ep, 16.0, Color(1.0, 0.75, 0.15, 0.45 * a))
+		draw_circle(ep, 3.2, Color(1.0, 0.9, 0.3, a))
+
+
+## kind 0 = pistola, 1 = revolver .38 (tom de latao, como no jogo).
+func _gun(pos: Vector2, ang: float, kind: int, a: float) -> void:
+	var tf := Transform2D(ang, Vector2.ONE, 0.0, pos + Vector2.from_angle(ang) * GUN_PUSH)
+	var metal := Color(0.78, 0.78, 0.86, a) if kind == 0 else Color(0.95, 0.72, 0.30, a)
+	var dark_m := Color(0.20, 0.20, 0.26, a) if kind == 0 else Color(0.42, 0.26, 0.10, a)
+	draw_line(tf * Vector2(30, 12), tf * Vector2(66.0 + float(kind) * 4.0, 12), metal, 7.0 + float(kind) * 2.0, true)
+	draw_colored_polygon(PackedVector2Array([tf * Vector2(28, 12), tf * Vector2(40, 12), tf * Vector2(36, 28), tf * Vector2(26, 28)]), dark_m)
+	if kind == 1:
+		draw_circle(tf * Vector2(38, 12), 9.0, metal)
+		draw_circle(tf * Vector2(38, 12), 4.0, dark_m)
+
+
+func _spider(pos: Vector2, ang: float, s: float, a: float, phase: float, flash: float) -> void:
+	if s <= 0.01:
+		return
+	var tf := Transform2D(ang, Vector2(s, s), 0.0, pos)
+	var body := Color(0.34, 0.04, 0.10, a)
+	_glow_ellipse(pos + Vector2(0.0, 10.0 * s), 42.0 * s, 16.0 * s, Color(0, 0, 0, 0.5 * a))
+	for i in 4:
+		for sd in [-1.0, 1.0]:
+			var side: float = sd
+			var ax: float = (1.5 - float(i)) * 8.0
+			var sw: float = sin(phase + float(i) * 1.4 + (PI if side < 0.0 else 0.0)) * 8.0
+			var anchor: Vector2 = tf * Vector2(ax, side * 10.0)
+			var knee: Vector2 = tf * Vector2(ax * 2.2 + sw * 0.4, side * 34.0)
+			var foot: Vector2 = tf * Vector2(ax * 3.4 + sw, side * 54.0)
+			draw_polyline(PackedVector2Array([anchor, knee, foot]), body, 5.0 * s, true)
+	draw_circle(tf * Vector2(-14, 0), 21.0 * s, body)
+	draw_circle(tf * Vector2(14, 0), 14.0 * s, body.lightened(0.10))
+	draw_arc(tf * Vector2(-14, 0), 21.0 * s, PI * 0.6, PI * 1.4, 12, Color(0.80, 0.18, 0.28, 0.6 * a), 2.5 * s, true)
+	_glow(tf * Vector2(24, 0), 20.0 * s, Color(1.0, 0.1, 0.2, 0.35 * a))
+	for sd in [-1.0, 1.0]:
+		draw_circle(tf * Vector2(24.0, float(sd) * 5.0), 2.6 * s, Color(1.0, 0.25, 0.30, a))
+	if flash > 0.0:
+		draw_circle(tf * Vector2(-14, 0), 21.0 * s, Color(1, 1, 1, 0.6 * flash * a))
+		draw_circle(tf * Vector2(14, 0), 14.0 * s, Color(1, 1, 1, 0.6 * flash * a))
+
+
+## Estouro vinho-escuro quando o inimigo morre (age de 0 a 1).
+func _death_burst(pos: Vector2, age: float, a: float) -> void:
+	if age <= 0.0 or age >= 1.0:
+		return
+	for i in 16:
+		var fi: float = float(i)
+		var dir := Vector2.from_angle(_h(fi * 2.3) * TAU)
+		var dist: float = (60.0 + _h(fi * 5.1) * 110.0) * age
+		var r: float = (3.0 + _h(fi * 7.7) * 6.0) * (1.0 - age)
+		draw_circle(pos + dir * dist, r, Color(0.55, 0.03, 0.12, (1.0 - age) * a))
+	_glow(pos, 50.0 * (1.0 - age), Color(0.70, 0.05, 0.15, 0.4 * (1.0 - age) * a))
+
+
+func _demo_bullet(pos: Vector2, dir: Vector2, kind: int, a: float) -> void:
+	var col := Color(1.0, 0.92, 0.55, a) if kind == 0 else Color(1.0, 0.65, 0.20, a)
+	var tail: float = 20.0 if kind == 0 else 28.0
+	_glow(pos, 18.0 if kind == 0 else 26.0, Color(col.r, col.g, col.b, 0.35 * a))
+	draw_line(pos - dir * tail, pos, col, 4.0 if kind == 0 else 6.0, true)
+	draw_circle(pos, 3.0 if kind == 0 else 4.5, Color(1, 1, 1, a))
+
+
+func _muzzle_fx(pos: Vector2, dir: Vector2, k: float, a: float) -> void:
+	if k <= 0.0:
+		return
+	_glow(pos + dir * 10.0, 46.0 * k, Color(1.0, 0.85, 0.4, 0.65 * k * a))
+	var side: Vector2 = dir.rotated(PI * 0.5)
+	draw_colored_polygon(PackedVector2Array([pos, pos + dir * 26.0 * k + side * 7.0 * k, pos + dir * 44.0 * k, pos + dir * 26.0 * k - side * 7.0 * k]), Color(1.0, 0.9, 0.5, 0.9 * k * a))
+
+
+func _crosshair(pos: Vector2, a: float, spin: float) -> void:
+	var col := Color(1.0, 0.30, 0.38, a)
+	draw_arc(pos, 17.0, 0.0, TAU, 28, col, 3.0, true)
+	for i in 4:
+		var d := Vector2.from_angle(spin + float(i) * PI * 0.5)
+		draw_line(pos + d * 10.0, pos + d * 26.0, col, 3.0, true)
+	draw_circle(pos, 2.5, col)
+
+
+func _impact_t(d0: float, v: float, ts: float, fi: float, rad: float, m_off: float) -> float:
+	return (d0 + v * ts - rad - m_off + DEMO_BULLET_SPEED * fi) / (DEMO_BULLET_SPEED + v)
+
+
+# ------------------------------------------------------------------------------
+# Demonstracoes (cada uma repete em loop)
+# ------------------------------------------------------------------------------
+
+func _demo_move(ar: Rect2, a: float) -> void:
+	var c: Vector2 = ar.get_center()
+	var w: float = 0.9
+	var rx: float = ar.size.x * 0.27
+	var ry: float = ar.size.y * 0.20
+	var t: float = _page_t
+
+	# trajeto em "8" que o Lobo percorre
+	var path := PackedVector2Array()
+	for i in 61:
+		var u: float = TAU * float(i) / 60.0
+		path.append(c + Vector2(cos(u) * rx, sin(u * 2.0) * ry))
+	draw_polyline(path, Color(0.75, 0.55, 0.95, 0.20 * a), 3.0, true)
+	for i in range(1, 7):
+		var tt: float = t - float(i) * 0.09
+		var tp: Vector2 = c + Vector2(cos(tt * w) * rx, sin(tt * w * 2.0) * ry)
+		_glow(tp, 26.0, Color(1.0, 0.8, 0.3, 0.14 * a * (1.0 - float(i) / 7.0)))
+
+	var p: Vector2 = c + Vector2(cos(t * w) * rx, sin(t * w * 2.0) * ry)
+	var vel := Vector2(-sin(t * w) * rx * w, cos(t * w * 2.0) * 2.0 * w * ry)
+	var mask: int = 0
+	if vel.y < -55.0:
+		mask |= 1
+	if vel.x < -55.0:
+		mask |= 2
+	if vel.y > 55.0:
+		mask |= 4
+	if vel.x > 55.0:
+		mask |= 8
+	_hi_wasd = mask
+	_hi_b = true
+
+	# a mira gira por conta propria: o Lobo sempre olha para ela
+	var m: Vector2 = c + Vector2(cos(t * 0.65 + 2.2) * ar.size.x * 0.39, sin(t * 0.65 + 2.2) * ar.size.y * 0.36)
+	var ang: float = (m - p).angle()
+	draw_dashed_line(p, m, Color(1.0, 0.35, 0.40, 0.35 * a), 2.0, 10.0)
+	_wolf_sprite(p, ang, a, 1, t)
+	_gun(p, ang, 0, a)
+	_crosshair(m, a, t * 1.5)
+	_chip(p + Vector2(0.0, -70.0), "LOBO", GOLD, a)
+	_chip(m + Vector2(0.0, -42.0), "MIRA", Color(1.0, 0.40, 0.45), a)
+
+
+func _demo_shoot(ar: Rect2, a: float) -> void:
+	var cycle: float = 10.0
+	var t: float = fposmod(_page_t, cycle)
+	var wp := Vector2(ar.position.x + 150.0, ar.get_center().y - 10.0)
+	var thetas: Array[float] = [-0.30, 0.32]
+	var starts: Array[float] = [0.2, 2.6]
+	var d0: float = 600.0
+	var v: float = 90.0
+	var gap: float = 0.14
+	var shots_per: int = 6
+	var m_off: float = 66.0 + GUN_PUSH
+	var rad: float = 24.0
+	var fire_delay: float = 0.5
+
+	var kill_t: Array[float] = []
+	for s in 2:
+		var last_f: float = starts[s] + fire_delay + float(shots_per - 1) * gap
+		kill_t.append(_impact_t(d0, v, starts[s], last_f, rad, m_off))
+
+	var aim: float = thetas[0]
+	if t > kill_t[0]:
+		aim = lerpf(thetas[0], thetas[1], _smooth((t - kill_t[0] - 0.15) / 0.5))
+	if t > 8.9:
+		aim = lerpf(thetas[1], thetas[0], _smooth((t - 8.9) / 0.9))
+
+	# passada 1: contagem de tiros, brilho de impacto, mira
+	var fired: int = 0
+	var firing: bool = false
+	var cross_d: float = 380.0
+	var flash_hit: Array[float] = [0.0, 0.0]
+	for s in 2:
+		var ts: float = starts[s]
+		if t >= ts and t < kill_t[s]:
+			cross_d = d0 - v * (t - ts)
+		for i in shots_per:
+			var fi: float = ts + fire_delay + float(i) * gap
+			var ti: float = _impact_t(d0, v, ts, fi, rad, m_off)
+			if t >= fi:
+				fired += 1
+				if t <= fi + gap:
+					firing = true
+			if t >= ti and t < ti + 0.09:
+				flash_hit[s] = 1.0 - (t - ti) / 0.09
+
+	var last_fire: float = starts[1] + fire_delay + float(shots_per - 1) * gap
+	var regen_at: float = last_fire + 5.0
+	var energy: float = 100.0 - 2.5 * float(fired)
+	if t > regen_at:
+		energy = minf(100.0, energy + 60.0 * (t - regen_at))
+
+	# inimigos
+	for s in 2:
+		var dir_s := Vector2.from_angle(thetas[s])
+		var ts: float = starts[s]
+		var tk: float = kill_t[s]
+		if t >= ts and t < tk:
+			var dist: float = d0 - v * (t - ts)
+			_spider(wp + dir_s * dist, thetas[s] + PI, _smooth((t - ts) / 0.4), a, t * 10.0, flash_hit[s])
+		elif t >= tk and t < tk + 0.6:
+			_death_burst(wp + dir_s * (d0 - v * (tk - ts)), (t - tk) / 0.6, a)
+
+	_wolf_sprite(wp, aim, a, 0, _page_t)
+	_gun(wp, aim, 0, a)
+
+	# tiros
+	for s in 2:
+		var dir_s := Vector2.from_angle(thetas[s])
+		var side_s: Vector2 = dir_s.rotated(PI * 0.5) * 12.0
+		var ts: float = starts[s]
+		for i in shots_per:
+			var fi: float = ts + fire_delay + float(i) * gap
+			var ti: float = _impact_t(d0, v, ts, fi, rad, m_off)
+			var mz: Vector2 = wp + side_s + dir_s * m_off
+			if t >= fi and t < ti:
+				_demo_bullet(mz + dir_s * (DEMO_BULLET_SPEED * (t - fi)), dir_s, 0, a)
+			if t >= fi and t < fi + 0.08:
+				_muzzle_fx(mz, dir_s, 1.0 - (t - fi) / 0.08, a)
+			if t >= ti and t < ti + 0.1:
+				_glow(mz + dir_s * (DEMO_BULLET_SPEED * (ti - fi)), 34.0, Color(1.0, 0.8, 0.5, 0.6 * a))
+
+	_crosshair(wp + Vector2.from_angle(aim) * cross_d, a, 0.0)
+	_hi_a = firing
+	if firing:
+		_chip(wp + Vector2(0.0, -78.0), "SEGURE O BOTÃO", GOLD, a)
+
+	var status: String = "ENERGIA: %d%%" % int(energy)
+	if firing:
+		status = "ATIRANDO... %d%%" % int(energy)
+	elif t > last_fire and t < regen_at:
+		status = "SEM ATIRAR... VOLTA EM %d s" % int(ceilf(regen_at - t))
+	elif t >= regen_at and energy < 99.5:
+		status = "RECARREGANDO!"
+	_bar(Rect2(ar.position.x + 24.0, ar.end.y - 48.0, 330.0, 24.0), energy / 100.0, Color(1.0, 0.80, 0.25), "ENERGIA DA PISTOLA", a)
+	_text(Vector2(ar.position.x + 372.0, ar.end.y - 26.0), status, 26, GOLD, a)
+
+
+func _demo_knife(ar: Rect2, a: float) -> void:
+	var cycle: float = 6.6
+	var t: float = fposmod(_page_t, cycle)
+	var c: Vector2 = ar.get_center() + Vector2(0.0, -10.0)
+	var v: float = 170.0
+	var d_start: float = 380.0
+	var d_contact: float = 100.0
+	var arrive: float = (d_start - d_contact) / v
+	var ts_list: Array[float] = [0.2, 3.4]
+	var th_list: Array[float] = [0.0, PI]
+	var slash_dur: float = 0.42
+
+	var face: float = 0.0
+	if t > 3.0:
+		face = lerpf(0.0, PI, _smooth((t - 3.0) / 0.4))
+	if t > 6.0:
+		face = lerpf(PI, 0.0, _smooth((t - 6.0) / 0.5))
+
+	var slashing: bool = false
+	var slash_p: float = 0.0
+	var slash_dir: float = 0.0
+	for s in 2:
+		var s0: float = ts_list[s] + arrive + 0.12
+		if t >= s0 and t < s0 + slash_dur:
+			slashing = true
+			slash_p = (t - s0) / slash_dur
+			slash_dir = th_list[s]
+
+	for s in 2:
+		var ts: float = ts_list[s]
+		var th: float = ts + arrive + 0.30
+		var dir_s := Vector2.from_angle(th_list[s])
+		if t >= ts and t < th:
+			var dist: float = maxf(d_start - v * (t - ts), d_contact)
+			var flash: float = 0.0
+			if t > th - 0.08:
+				flash = 1.0
+			_spider(c + dir_s * dist, th_list[s] + PI, _smooth((t - ts) / 0.4), a, t * 12.0, flash)
+		elif t >= th and t < th + 0.6:
+			_death_burst(c + dir_s * d_contact, (t - th) / 0.6, a)
+
+	if _spr_tex[2] != null:
+		if slashing:
+			_wolf_sprite(c, slash_dir, a, 2, t, slash_p)
+			_chip(c + Vector2(0.0, -96.0), "PARADO NO GOLPE", GOLD, a)
+		else:
+			_wolf_sprite(c, face, a, 0, t)
+			_gun(c, face, 0, a)
+	else:
+		_wolf_top(c, face, a, 0.0)
+		if not slashing:
+			_gun(c, face, 0, a)
+		else:
+			var e: float = _smooth(slash_p)
+			var a0: float = slash_dir - 1.2
+			var a1: float = a0 + 2.4 * e
+			var fade: float = 1.0 - clampf((slash_p - 0.7) / 0.3, 0.0, 1.0)
+			if e > 0.03:
+				draw_arc(c, 84.0, a0, a1, 24, Color(1.0, 0.95, 0.85, 0.85 * fade * a), 10.0, true)
+				draw_arc(c, 64.0, a0 + 0.2, a1, 24, Color(1.0, 0.75, 0.55, 0.45 * fade * a), 5.0, true)
+			var tip: Vector2 = c + Vector2.from_angle(a1)
+			draw_line(c + (tip - c) * 34.0, c + (tip - c) * 96.0, Color(0.88, 0.90, 1.0, a), 6.0, true)
+			_glow(c + (tip - c) * 96.0, 30.0, Color(1.0, 1.0, 1.0, 0.5 * fade * a))
+			_chip(c + Vector2(0.0, -96.0), "PARADO NO GOLPE", GOLD, a)
+	_hi_a = slashing
+
+
+func _dash_off(tt: float, dash_t: float, dash_len: float, dash_dur: float) -> float:
+	var off: float = 0.0
+	if tt >= dash_t:
+		off = -dash_len * _smooth((tt - dash_t) / dash_dur)
+	if tt >= 4.6:
+		off = -dash_len * (1.0 - _smooth((tt - 4.6) / 0.9))
+	return off
+
+
+func _demo_dash(ar: Rect2, a: float) -> void:
+	var cycle: float = 6.4
+	var t: float = fposmod(_page_t, cycle)
+	var home := Vector2(ar.position.x + 300.0, ar.get_center().y + 60.0)
+	var sx0: float = ar.position.x + 860.0
+	var charge_t: float = 1.2
+	var spd: float = 560.0
+	var dash_t: float = charge_t + (sx0 - home.x - 200.0) / spd
+	var dash_len: float = 150.0
+	var dash_dur: float = 0.30
+	var in_dash: bool = t >= dash_t and t < dash_t + dash_dur + 0.1
+
+	# inimigo que investe em linha reta
+	var sx: float = sx0
+	if t >= charge_t:
+		sx = sx0 - spd * (t - charge_t)
+	var sp_alpha: float = clampf((sx - (ar.position.x + 40.0)) / 70.0, 0.0, 1.0)
+	if t < charge_t + 0.4 and t > 0.5:
+		var pulse: float = 0.30 + 0.20 * sin(_total * 14.0)
+		draw_dashed_line(Vector2(sx, home.y), Vector2(ar.position.x + 24.0, home.y), Color(1.0, 0.2, 0.25, pulse * a), 3.0, 12.0)
+		_chip(Vector2(sx, home.y - 62.0), "PERIGO!", Color(1.0, 0.35, 0.40), a)
+	if sp_alpha > 0.0:
+		_spider(Vector2(sx, home.y), PI, _smooth(t / 0.4), a * sp_alpha, t * 18.0, 0.0)
+
+	# rastro (imagens residuais) do dash
+	for i in range(1, 6):
+		var tt: float = t - float(i) * 0.045
+		if tt >= dash_t and tt < dash_t + dash_dur + 0.05:
+			var gp := Vector2(home.x, home.y + _dash_off(tt, dash_t, dash_len, dash_dur))
+			_glow(gp, 56.0, Color(0.60, 0.30, 0.95, 0.28 * a * (1.0 - float(i) / 6.0)))
+			_wolf_sprite(gp, 0.0, a * 0.30 * (1.0 - float(i) / 6.0), 1, tt)
+
+	var wp := Vector2(home.x, home.y + _dash_off(t, dash_t, dash_len, dash_dur))
+	var wa: float = a * (0.5 if in_dash else 1.0)
+	_wolf_sprite(wp, 0.0, wa, 1 if in_dash else 0, t)
+	_gun(wp, 0.0, 0, wa)
+	if t >= dash_t and t < dash_t + dash_dur + 0.4:
+		draw_arc(wp, 64.0 + 5.0 * sin(_total * 16.0), 0.0, TAU, 40, Color(0.60, 0.80, 1.0, 0.7 * a), 4.0, true)
+		_chip(wp + Vector2(0.0, -92.0), "INVULNERÁVEL", Color(0.65, 0.85, 1.0), a)
+	_hi_a = t >= dash_t - 0.05 and t < dash_t + 0.25
+
+	var cd: float = 1.0
+	if t >= dash_t:
+		cd = clampf((t - dash_t) / 0.8, 0.0, 1.0)
+	_bar(Rect2(ar.position.x + 24.0, ar.end.y - 48.0, 330.0, 24.0), cd, Color(0.65, 0.30, 0.95), "DASH", a)
+	_text(Vector2(ar.position.x + 372.0, ar.end.y - 26.0), "PRONTO!" if cd >= 1.0 else "RECARREGANDO...", 26, GOLD, a)
+
+
+func _slot(rect: Rect2, label: String, selected: bool, a: float) -> void:
+	draw_rect(rect, Color(0.36, 0.14, 0.30, 0.95) if selected else Color(0.06, 0.04, 0.10, 0.95))
+	draw_rect(rect, GOLD if selected else Color(0.45, 0.35, 0.65, 0.8), false, 3.0 if selected else 2.0)
+	draw_string(FONT_BOLD, Vector2(rect.position.x, rect.position.y + 37.0), label, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, 26,
+		Color(1.0, 0.95, 0.85, a) if selected else Color(0.65, 0.58, 0.80, a))
+
+
+func _demo_weapons(ar: Rect2, a: float) -> void:
+	var cycle: float = 10.0
+	var t: float = fposmod(_page_t, cycle)
+	var wp := Vector2(ar.position.x + 130.0, ar.get_center().y + 20.0)
+	var tgt := Vector2(ar.position.x + 540.0, wp.y)
+	var swap1: float = 1.2
+	var swap2: float = 8.4
+	var revolver: bool = t >= swap1 + 0.1 and t < swap2 + 0.1
+	var fire_times: Array[float] = [1.9, 2.4, 2.9, 3.4, 3.9, 4.4, 7.0]
+	var reload_start: float = 5.0
+	var reload_end: float = reload_start + 1.3
+	var rprog: float = clampf((t - reload_start) / 1.3, 0.0, 1.0)
+	var reloading: bool = t >= reload_start and t < reload_end
+
+	# balas no tambor e giro do cilindro
+	var shots_before: int = 0
+	for i in 6:
+		if t >= fire_times[i]:
+			shots_before += 1
+	var rounds: int = 6 - shots_before
+	var rot: float = 0.0
+	for i in 6:
+		rot += (PI / 3.0) * _smooth((t - fire_times[i]) / 0.15)
+	if reloading:
+		rounds = 0
+		rot = TAU * rprog
+	elif t >= reload_end:
+		rounds = 6
+		rot = (PI / 3.0) * _smooth((t - fire_times[6]) / 0.15)
+		if t >= fire_times[6]:
+			rounds = 5
+
+	# alvo
+	var hit_flash: float = 0.0
+	var travel: float = (tgt.x - 46.0 - (wp.x + 66.0 + GUN_PUSH)) / 1100.0
+	for ft in fire_times:
+		if t >= ft + travel and t < ft + travel + 0.12:
+			hit_flash = 1.0 - (t - ft - travel) / 0.12
+	draw_line(tgt + Vector2(0.0, 40.0), tgt + Vector2(0.0, 90.0), Color(0.20, 0.15, 0.25, a), 8.0)
+	draw_circle(tgt, 46.0, Color(0.10, 0.07, 0.14, a))
+	draw_circle(tgt, 40.0, Color(0.75, 0.15, 0.20, a))
+	draw_circle(tgt, 27.0, Color(0.92, 0.90, 0.95, a))
+	draw_circle(tgt, 15.0, Color(0.75, 0.15, 0.20, a))
+	draw_circle(tgt, 5.0, Color(0.92, 0.90, 0.95, a))
+	if hit_flash > 0.0:
+		_glow(tgt, 70.0, Color(1.0, 0.8, 0.4, 0.6 * hit_flash * a))
+
+	# Lobo, arma e tiros
+	_wolf_sprite(wp, 0.0, a, 0, _page_t)
+	_gun(wp, 0.0, 1 if revolver else 0, a)
+	var mz: Vector2 = wp + Vector2(66.0 + GUN_PUSH, 12.0)
+	for ft in fire_times:
+		if t >= ft and t < ft + travel:
+			_demo_bullet(mz + Vector2(1100.0 * (t - ft), 0.0), Vector2.RIGHT, 1, a)
+		if t >= ft and t < ft + 0.09:
+			_muzzle_fx(mz, Vector2.RIGHT, 1.0 - (t - ft) / 0.09, a)
+
+	# barra de armas (TAB troca)
+	var slot_a := Rect2(ar.end.x - 310.0, ar.position.y + 24.0, 140.0, 54.0)
+	var slot_b := Rect2(slot_a.end.x + 14.0, slot_a.position.y, 140.0, 54.0)
+	_slot(slot_a, "PISTOLA", not revolver, a)
+	_slot(slot_b, ".38", revolver, a)
+
+	# tambor do revolver
+	var cc := Vector2(ar.end.x - 150.0, ar.get_center().y + 50.0)
+	draw_circle(cc, 100.0, Color(0.12, 0.11, 0.16, a))
+	draw_arc(cc, 100.0, 0.0, TAU, 48, Color(0.95, 0.72, 0.30, 0.8 * a), 4.0, true)
+	for k in 6:
+		var ca: float = -PI * 0.5 + float(k) * PI / 3.0 - rot
+		var cp: Vector2 = cc + Vector2.from_angle(ca) * 62.0
+		var loaded: bool = k >= shots_before
+		if reloading:
+			loaded = k < int(rprog * 6.0 + 0.2)
+		elif t >= reload_end:
+			loaded = not (k == 0 and t >= fire_times[6])
+		if loaded:
+			draw_circle(cp, 25.0, Color(0.95, 0.72, 0.30, a))
+			draw_circle(cp, 15.0, Color(1.0, 0.88, 0.55, a))
+		else:
+			draw_circle(cp, 25.0, Color(0.02, 0.01, 0.04, a))
+			draw_arc(cp, 25.0, 0.0, TAU, 24, Color(0.45, 0.35, 0.60, a), 2.5)
+	draw_circle(cc, 18.0, Color(0.30, 0.26, 0.38, a))
+	draw_colored_polygon(PackedVector2Array([cc + Vector2(-10.0, -128.0), cc + Vector2(10.0, -128.0), cc + Vector2(0.0, -108.0)]), Color(1.0, 0.35, 0.40, a))
+	if reloading:
+		draw_arc(cc, 118.0, -PI * 0.5, -PI * 0.5 + TAU * rprog, 48, GOLD, 8.0, true)
+		_chip(cc + Vector2(0.0, 156.0), "RECARREGANDO...", GOLD, a)
+	else:
+		_chip(cc + Vector2(0.0, 156.0), "TAMBOR: %d / 6" % rounds, GOLD if rounds > 0 else Color(1.0, 0.40, 0.45), a)
+	if revolver and rounds == 0 and not reloading:
+		_chip(cc + Vector2(0.0, -170.0), "VAZIO!", Color(1.0, 0.40, 0.45), a)
+
+	_hi_a = (t >= swap1 and t < swap1 + 0.3) or (t >= swap2 and t < swap2 + 0.3)
+	_hi_b = reloading and t < reload_start + 0.3
+
+
+# ------------------------------------------------------------------------------
+# Painel de controles (pagina 1 a 5) e resumo (pagina 6)
+# ------------------------------------------------------------------------------
+
+func _block_cy(r: Rect2, i: int) -> float:
+	return r.position.y + 150.0 + float(i) * 112.0 + 78.0
+
+
+func _block_title(r: Rect2, i: int, text: String, a: float) -> void:
+	_text(Vector2(r.position.x + 40.0, r.position.y + 150.0 + float(i) * 112.0 + 26.0), text, 32, GOLD, a)
+
+
+func _manual_controls(r: Rect2, page: int, a: float) -> void:
+	_card(r, "CONTROLES", a, Color(0.55, 0.30, 0.75, 0.9))
+	var kx: float = r.position.x + 40.0
+	var px: float = r.position.x + r.size.x * 0.46
+	_text(Vector2(kx, r.position.y + 134.0), "TECLADO E MOUSE", 24, PURPLE, a)
+	_text(Vector2(px, r.position.y + 134.0), "CONTROLE", 24, PURPLE, a)
+	var blocks: int = 1
+	match page:
+		0:
+			blocks = 2
+			var cy0: float = _block_cy(r, 0)
+			_block_title(r, 0, "MOVER", a)
+			_wasd(Vector2(kx, cy0 - 28.0), _hi_wasd, a, 56.0)
+			_stick_icon(Vector2(px + 32.0, cy0), _hi_wasd != 0, a)
+			_text(Vector2(px + 78.0, cy0 + 9.0), "Analóg. esquerdo", 26, BODY, a)
+			var cy1: float = _block_cy(r, 1)
+			_block_title(r, 1, "MIRAR", a)
+			_mouse_icon(Vector2(kx, cy1 - 32.0), false, a)
+			_text(Vector2(kx + 62.0, cy1 + 9.0), "Mouse", 30, BODY, a)
+			_stick_icon(Vector2(px + 32.0, cy1), true, a)
+			_text(Vector2(px + 78.0, cy1 + 9.0), "Analóg. direito", 26, BODY, a)
+		1:
+			var cy: float = _block_cy(r, 0)
+			_block_title(r, 0, "ATIRAR (SEGURE)", a)
+			_mouse_icon(Vector2(kx, cy - 32.0), _hi_a, a)
+			_text(Vector2(kx + 62.0, cy + 9.0), "Botão esquerdo", 28, BODY, a)
+			_pad_badge(Rect2(px, cy - 30.0, 100.0, 60.0), "R2", _hi_a, a)
+			_text(Vector2(px + 116.0, cy + 9.0), "Gatilho direito", 26, BODY, a)
+		2:
+			var cy: float = _block_cy(r, 0)
+			_block_title(r, 0, "FACADA", a)
+			_keycap(Rect2(kx, cy - 30.0, 200.0, 60.0), "ESPAÇO", _hi_a, 30, a)
+			_pad_badge(Rect2(px, cy - 30.0, 100.0, 60.0), "R1", _hi_a, a)
+			_text(Vector2(px + 116.0, cy + 9.0), "Ombro direito", 26, BODY, a)
+		3:
+			var cy: float = _block_cy(r, 0)
+			_block_title(r, 0, "DASH", a)
+			_keycap(Rect2(kx, cy - 30.0, 170.0, 60.0), "SHIFT", _hi_a, 30, a)
+			_pad_square(Vector2(px + 32.0, cy), _hi_a, a)
+			_text(Vector2(px + 78.0, cy + 9.0), "Quadrado", 26, BODY, a)
+		4:
+			blocks = 2
+			var cy0: float = _block_cy(r, 0)
+			_block_title(r, 0, "TROCAR ARMA", a)
+			_keycap(Rect2(kx, cy0 - 30.0, 120.0, 60.0), "TAB", _hi_a, 30, a)
+			_pad_badge(Rect2(px, cy0 - 30.0, 100.0, 60.0), "L1", _hi_a, a)
+			_text(Vector2(px + 116.0, cy0 + 9.0), "Ombro esquerdo", 26, BODY, a)
+			var cy1: float = _block_cy(r, 1)
+			_block_title(r, 1, "RECARREGAR", a)
+			_keycap(Rect2(kx, cy1 - 30.0, 70.0, 60.0), "R", _hi_b, 30, a)
+			_text(Vector2(px, cy1 + 9.0), "Automático ao esvaziar", 26, BODY, a)
+
+	# explicacao curta, em frases simples
+	var ty: float = r.position.y + 150.0 + float(blocks) * 112.0 + 8.0
+	draw_line(Vector2(kx, ty), Vector2(r.end.x - 40.0, ty), Color(0.55, 0.30, 0.75, 0.45 * a), 2.0)
+	_text(Vector2(kx, ty + 40.0), "COMO FUNCIONA", 32, GOLD, a)
+	var yy: float = ty + 80.0
+	var tips: Array = MANUAL_TIPS[page]
+	for tip in tips:
+		draw_circle(Vector2(kx + 8.0, yy - 9.0), 5.0, Color(1.0, 0.45, 0.50, a))
+		var h: float = _para(Vector2(kx + 28.0, yy), tip as String, r.size.x - 84.0, 26, BODY, a)
+		yy += h + 14.0
+
+
+func _manual_demo_card(r: Rect2, a: float) -> Rect2:
+	_card(r, "DEMONSTRAÇÃO", a, Color(0.55, 0.30, 0.75, 0.9))
+	var ar := Rect2(r.position + Vector2(30.0, 112.0), r.size - Vector2(60.0, 142.0))
+	_arena_floor(ar, a)
+	return ar
+
+
+func _manual_summary(x0: float, y0: float, w: float, a: float) -> void:
+	var table := Rect2(x0, y0, w, 562.0)
+	_card(table, "TODOS OS CONTROLES", a, Color(0.55, 0.30, 0.75, 0.9))
+	var kx: float = x0 + w * 0.26
+	var px: float = x0 + w * 0.62
+	_text(Vector2(kx, y0 + 132.0), "TECLADO E MOUSE", 26, PURPLE, a)
+	_text(Vector2(px, y0 + 132.0), "CONTROLE", 26, PURPLE, a)
+	var rows: Array[String] = ["MOVER", "MIRAR", "ATIRAR", "FACADA", "DASH", "TROCAR ARMA", "RECARREGAR"]
+	var row_h: float = 58.0
+	for i in rows.size():
+		var cy: float = y0 + 176.0 + float(i) * row_h
+		if i > 0:
+			draw_line(Vector2(x0 + 40.0, cy - row_h * 0.5), Vector2(x0 + w - 40.0, cy - row_h * 0.5), Color(0.55, 0.30, 0.75, 0.25 * a), 2.0)
+		_text(Vector2(x0 + 40.0, cy + 11.0), rows[i], 30, GOLD, a)
+		match i:
+			0:
+				_wasd(Vector2(kx, cy - 22.0), 0, a, 44.0)
+				_stick_icon(Vector2(px + 22.0, cy), false, a, 0.7)
+				_text(Vector2(px + 60.0, cy + 9.0), "Analógico esquerdo", 26, BODY, a)
+			1:
+				_mouse_icon(Vector2(kx, cy - 20.0), false, a, 0.62)
+				_text(Vector2(kx + 46.0, cy + 9.0), "Mouse", 28, BODY, a)
+				_stick_icon(Vector2(px + 22.0, cy), false, a, 0.7)
+				_text(Vector2(px + 60.0, cy + 9.0), "Analógico direito", 26, BODY, a)
+			2:
+				_mouse_icon(Vector2(kx, cy - 20.0), true, a, 0.62)
+				_text(Vector2(kx + 46.0, cy + 9.0), "Botão esquerdo (segure)", 28, BODY, a)
+				_pad_badge(Rect2(px, cy - 22.0, 84.0, 44.0), "R2", false, a)
+			3:
+				_keycap(Rect2(kx, cy - 22.0, 170.0, 44.0), "ESPAÇO", false, 26, a)
+				_pad_badge(Rect2(px, cy - 22.0, 84.0, 44.0), "R1", false, a)
+			4:
+				_keycap(Rect2(kx, cy - 22.0, 140.0, 44.0), "SHIFT", false, 26, a)
+				_pad_square(Vector2(px + 22.0, cy), false, a, 0.7)
+				_text(Vector2(px + 60.0, cy + 9.0), "Quadrado", 26, BODY, a)
+			5:
+				_keycap(Rect2(kx, cy - 22.0, 100.0, 44.0), "TAB", false, 26, a)
+				_pad_badge(Rect2(px, cy - 22.0, 84.0, 44.0), "L1", false, a)
+			6:
+				_keycap(Rect2(kx, cy - 22.0, 56.0, 44.0), "R", false, 26, a)
+				_text(Vector2(px, cy + 9.0), "Automático ao esvaziar o tambor", 26, BODY, a)
+
+	var oy: float = y0 + 580.0
+	var ob := Rect2(x0, oy, w, 100.0)
+	draw_style_box(_card_style, ob)
+	draw_rect(ob, Color(0.85, 0.20, 0.30, 0.95), false, 3.0)
+	_keycap(Rect2(x0 + 40.0, oy + 22.0, 56.0, 56.0), "Q", false, 30, a)
+	_text(Vector2(x0 + 112.0, oy + 62.0), "Interagir", 30, BODY, a)
+	_keycap(Rect2(x0 + 330.0, oy + 22.0, 96.0, 56.0), "ESC", false, 26, a)
+	_text(Vector2(x0 + 442.0, oy + 62.0), "Pausar", 30, BODY, a)
+	_text(Vector2(x0 + 640.0, oy + 62.0), "Sobreviva à noite, invada o castelo e destrua o Drácula.", 30, Color(1.0, 0.86, 0.86), a)
+
+
+func _manual_dots(cx: float, a: float) -> void:
+	var dy: float = 974.0
+	var spacing: float = 34.0
+	var x_start: float = cx - spacing * float(MANUAL_PAGES - 1) * 0.5
+	for i in MANUAL_PAGES:
+		var on: bool = (i == _manual_page)
+		draw_circle(Vector2(x_start + float(i) * spacing, dy), 9.0 if on else 6.0, Color(GOLD.r, GOLD.g, GOLD.b, a) if on else Color(0.55, 0.45, 0.75, 0.7 * a))
+	if _manual_page > 0:
+		var lx: float = x_start - 46.0
+		draw_colored_polygon(PackedVector2Array([Vector2(lx - 8.0, dy), Vector2(lx + 6.0, dy - 10.0), Vector2(lx + 6.0, dy + 10.0)]), Color(0.75, 0.65, 0.95, 0.8 * a))
+	var rx: float = x_start + spacing * float(MANUAL_PAGES - 1) + 46.0
+	var pulse: float = 0.6 + 0.4 * sin(_total * 5.0)
+	draw_colored_polygon(PackedVector2Array([Vector2(rx + 8.0, dy), Vector2(rx - 6.0, dy - 10.0), Vector2(rx - 6.0, dy + 10.0)]), Color(1.0, 0.82, 0.45, pulse * a))
+
+
+func _scene_manual() -> void:
 	var cx: float = _vw * 0.5
+	_hi_a = false
+	_hi_b = false
+	_hi_wasd = 0
 	_sky(Color(0.02, 0.012, 0.045), Color(0.10, 0.05, 0.15))
 	_stars(60, 700.0, 0.7)
 	_mountains(900.0, 160.0, Color(0.03, 0.02, 0.06), 2.0)
 	_castle(Vector2(cx, 980.0), 0.55, false, true)
-	draw_rect(Rect2(-400.0, -300.0, _vw + 800.0, 1700.0), Color(0.01, 0.005, 0.02, 0.62))
+	draw_rect(Rect2(-400.0, -300.0, _vw + 800.0, 1700.0), Color(0.01, 0.005, 0.02, 0.72))
 
-	var ta: float = _smooth(_elapsed / 0.6)
-	draw_string_outline(FONT_BOLD, Vector2(0.0, 165.0), "GUIAS DE SOBREVIVÊNCIA", HORIZONTAL_ALIGNMENT_CENTER, _vw, 82, 12, Color(0.12, 0.03, 0.18, ta))
-	draw_string(FONT_BOLD, Vector2(0.0, 165.0), "GUIAS DE SOBREVIVÊNCIA", HORIZONTAL_ALIGNMENT_CENTER, _vw, 82, Color(0.92, 0.80, 1.0, ta))
+	var page: int = _manual_page
+	var a: float = _smooth(_page_t / 0.35)
+	var slide: float = (1.0 - a) * 24.0
 
-	# --- Tabela de controles: ação | teclado e mouse | controle ---
+	draw_string(FONT_BOLD, Vector2(0.0, 128.0), "MANUAL DO CAÇADOR", HORIZONTAL_ALIGNMENT_CENTER, _vw, 28, Color(PURPLE.r, PURPLE.g, PURPLE.b, 0.9))
+	draw_string_outline(FONT_BOLD, Vector2(0.0, 205.0 + slide), MANUAL_TITLES[page], HORIZONTAL_ALIGNMENT_CENTER, _vw, 76, 12, Color(0.12, 0.03, 0.18, a))
+	draw_string(FONT_BOLD, Vector2(0.0, 205.0 + slide), MANUAL_TITLES[page], HORIZONTAL_ALIGNMENT_CENTER, _vw, 76, Color(0.92, 0.80, 1.0, a))
+	draw_string(FONT_BOLD, Vector2(0.0, 250.0), MANUAL_SUBTITLES[page], HORIZONTAL_ALIGNMENT_CENTER, _vw, 32, Color(BODY.r, BODY.g, BODY.b, a))
+
 	var card_w: float = minf(1720.0, _vw - 120.0)
 	var x0: float = cx - card_w * 0.5
-	var a1: float = _card(Rect2(x0, 195.0, card_w, 725.0), "CONTROLES", 0.4, Color(0.55, 0.30, 0.75, 0.9))
-	var y0: float = 195.0 + (1.0 - a1) * 40.0
-	var kx: float = x0 + card_w * 0.27
-	var px: float = x0 + card_w * 0.64
-	var head_col := Color(0.75, 0.65, 0.95)
-	_text(Vector2(kx, y0 + 140.0), "TECLADO E MOUSE", 30, head_col, a1)
-	_text(Vector2(px, y0 + 140.0), "CONTROLE", 30, head_col, a1)
-
-	var actions: Array[String] = ["MOVER", "MIRAR", "ATIRAR", "FACADA", "TROCAR ARMA", "DASH"]
-	var active: int = int(_total * 0.9) % actions.size()
-	for i in actions.size():
-		var cy: float = y0 + 205.0 + float(i) * 88.0
-		var hi: bool = (i == active)
-		if i > 0:
-			draw_line(Vector2(x0 + 40.0, cy - 44.0), Vector2(x0 + card_w - 40.0, cy - 44.0), Color(0.55, 0.30, 0.75, 0.25 * a1), 2.0)
-		_text(Vector2(x0 + 40.0, cy + 12.0), actions[i], 36, GOLD, a1)
-
-		# Teclado e mouse
-		match i:
-			0:
-				var letters: Array[String] = ["W", "A", "S", "D"]
-				var lit: int = int(_total * 3.0) % 4
-				for k in 4:
-					_keycap(Rect2(kx + float(k) * 68.0, cy - 30.0, 60.0, 60.0), letters[k], hi and k == lit, 32, a1)
-			1:
-				_mouse_icon(Vector2(kx, cy - 32.0), false, a1)
-				_text(Vector2(kx + 70.0, cy + 10.0), "Mouse", 32, BODY, a1)
-			2:
-				_mouse_icon(Vector2(kx, cy - 32.0), true, a1)
-				_text(Vector2(kx + 70.0, cy + 10.0), "Botão esquerdo", 32, BODY, a1)
-			3:
-				_keycap(Rect2(kx, cy - 30.0, 230.0, 60.0), "ESPAÇO", hi, 30, a1)
-			4:
-				_keycap(Rect2(kx, cy - 30.0, 120.0, 60.0), "TAB", hi, 30, a1)
-			5:
-				_keycap(Rect2(kx, cy - 30.0, 170.0, 60.0), "SHIFT", hi, 30, a1)
-
-		# Controle
-		match i:
-			0:
-				_stick_icon(Vector2(px + 32.0, cy), hi, a1)
-				_text(Vector2(px + 85.0, cy + 10.0), "Analógico esquerdo", 32, BODY, a1)
-			1:
-				_stick_icon(Vector2(px + 32.0, cy), false, a1)
-				_text(Vector2(px + 85.0, cy + 10.0), "Analógico direito", 32, BODY, a1)
-			2:
-				_pad_badge(Rect2(px, cy - 30.0, 100.0, 60.0), "R2", hi, a1)
-			3:
-				_pad_badge(Rect2(px, cy - 30.0, 100.0, 60.0), "R1", hi, a1)
-			4:
-				_pad_badge(Rect2(px, cy - 30.0, 100.0, 60.0), "L1", hi, a1)
-			5:
-				_pad_square(Vector2(px + 32.0, cy), hi, a1)
-				_text(Vector2(px + 85.0, cy + 10.0), "Quadrado", 32, BODY, a1)
-
-	# --- Objetivo ---
-	var a3: float = _smooth((_elapsed - 1.4) / 0.5)
-	var oy: float = 945.0 + (1.0 - a3) * 30.0
-	draw_style_box(_card_style, Rect2(x0, oy, card_w, 100.0))
-	draw_rect(Rect2(x0, oy, card_w, 100.0), Color(0.85, 0.20, 0.30, 0.95 * a3), false, 3.0)
-	_keycap(Rect2(x0 + 40.0, oy + 20.0, 60.0, 60.0), "Q", false, 32, a3)
-	_text(Vector2(x0 + 115.0, oy + 62.0), "Interagir", 30, BODY, a3)
-	_keycap(Rect2(x0 + 330.0, oy + 20.0, 100.0, 60.0), "ESC", false, 28, a3)
-	_text(Vector2(x0 + 445.0, oy + 62.0), "Pausar", 30, BODY, a3)
-	_text(Vector2(x0 + 640.0, oy + 62.0), "Sobreviva à noite, invada o castelo e destrua o Drácula.", 30, Color(1.0, 0.86, 0.86), a3)
+	var y0: float = 268.0
+	if page == MANUAL_PAGES - 1:
+		_manual_summary(x0, y0, card_w, a)
+	else:
+		var gap: float = 28.0
+		var demo_w: float = card_w * 0.585
+		var ar: Rect2 = _manual_demo_card(Rect2(x0, y0, demo_w, 690.0), a)
+		match page:
+			0: _demo_move(ar, a)
+			1: _demo_shoot(ar, a)
+			2: _demo_knife(ar, a)
+			3: _demo_dash(ar, a)
+			4: _demo_weapons(ar, a)
+		_manual_controls(Rect2(x0 + demo_w + gap, y0, card_w - demo_w - gap, 690.0), page, a)
+	_manual_dots(cx, a)
 
 
 func _scene_final() -> void:
@@ -1511,8 +2287,8 @@ func _scene_final() -> void:
 	# Ajustado o tamanho da fonte para 130 para se adequar perfeitamente em duas linhas
 	var fs: int = int(130.0 * scale_in)
 	
-	var line1: String = "THE LEGEND OF DRACULA"
-	var line2: String = "FALLS IN THE MOONLIGHT"
+	var line1: String = "THE LAST LEGEND"
+	var line2: String = ""
 	
 	var y1: float = 200.0 # Altura da 1ª linha
 	var y2: float = 300.0 # Altura da 2ª linha
@@ -1552,6 +2328,8 @@ func _play_shot_audio() -> void:
 	_shot_player.stream = load(path)
 	_shot_player.volume_db = -3.0
 	add_child(_shot_player)
+	if _shot == 8:
+		_shot_player.finished.connect(_shot_player.play) # manual: a música repete
 	_shot_player.play()
 
 

@@ -40,9 +40,9 @@ var regen_speed: float = 60.0
 var last_shot_time: float = 0.0
 
 # DASH (Shift no teclado / X no controle) - curto, com cooldown e i-frames
-const DASH_SPEED := 320.0      # velocidade durante o dash (andar normal = 100)
-const DASH_DURATION := 0.15    # ~48px de distância
-const DASH_COOLDOWN := 0.8     # contado a partir do início do dash
+const DASH_SPEED := 500.0      # velocidade durante o dash (andar normal = 100)
+const DASH_DURATION := 0.12    # ~48px de distância
+const DASH_COOLDOWN := 1.0     # contado a partir do início do dash
 var is_dashing: bool = false
 var can_dash: bool = true
 var dash_direction := Vector2.ZERO

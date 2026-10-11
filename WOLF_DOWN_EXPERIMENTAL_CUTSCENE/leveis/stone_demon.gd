@@ -26,6 +26,8 @@ const LIGHT_TEX_PATH := "res://bullet/light2D-gradient.png"
 const FRAME := 32
 ## Marcas do glifo de invocação desenhado no chão, embaixo de cada estátua.
 const RUNE_TICKS := 12
+## Intervalo entre passadas (s) de cada tipo: o Bruto pisa pesado e devagar, o Rei é rápido.
+const STEP_INTERVAL: Array[float] = [0.55, 0.40, 0.28]
 
 @export var kind: int = 0
 @export var health_override: int = 0
@@ -75,6 +77,7 @@ var _dust: Array = []
 var _trail: Array = []
 var _trail_cd: float = 0.0
 var _dust_cd: float = 0.0
+var _step_cd: float = 0.0
 
 
 func _ready() -> void:
@@ -144,6 +147,11 @@ func hit_center() -> Vector2:
 	return global_position + Vector2(0.0, -15.0 * _spr)
 
 
+## Som único de cada guardião (res://audio/gaiola/sfx/<tipo>_<evento>.ogg), tocado na posição dele.
+func _snd(event: String) -> void:
+	GaiolaAudio.demon(self, kind, event, global_position)
+
+
 func is_awake() -> bool:
 	return state != State.DORMANT and state != State.DEAD
 
@@ -156,6 +164,7 @@ func awaken() -> void:
 	_shake = 1.0
 	add_to_group("enemies")
 	_add_ring(LAVA_COLORS[kind], 46.0 * _k, 0.6)
+	_snd("wake")
 	woke.emit()
 
 
@@ -181,6 +190,7 @@ func revive(health_factor: float = 1.0) -> void:
 	_trail.clear()
 	_add_ring(LAVA_COLORS[kind], 70.0 * _k, 0.8)
 	add_to_group("enemies")
+	_snd("revive")
 	woke.emit()
 
 
@@ -241,6 +251,11 @@ func _physics_process(delta: float) -> void:
 
 	if state != State.DORMANT:
 		move_and_slide()
+	if state == State.CHASE and velocity.length() > 5.0:
+		_step_cd -= delta
+		if _step_cd <= 0.0:
+			_step_cd = STEP_INTERVAL[kind]
+			_snd("step")
 	if pl_ok and is_awake():
 		_check_contact(pl)
 	_redraw_all()
@@ -301,6 +316,7 @@ func _chase(delta: float, pl: Node2D) -> void:
 
 
 func _start_windup(what: String, dir: Vector2) -> void:
+	_snd("windup" if what == "charge" else "windup_volley")
 	_attack_kind = what
 	_charge_dir = dir
 	_enter(State.WINDUP)
@@ -308,6 +324,7 @@ func _start_windup(what: String, dir: Vector2) -> void:
 
 func _begin_attack() -> void:
 	if _attack_kind == "charge":
+		_snd("charge")
 		_enter(State.CHARGE)
 	else:
 		_fire_volley()
@@ -320,6 +337,7 @@ func _end_charge() -> void:
 	_shake = 0.6
 	_add_ring(LAVA_COLORS[kind], 64.0 * _k, 0.45)
 	_spawn_dust(8)
+	_snd("ring" if kind == 2 else "slam")
 	if kind == 2:
 		_fire_ring(10)
 	_recover_time = 0.9
@@ -341,6 +359,7 @@ func _fire_volley() -> void:
 	var pl = Global.Player
 	if not is_instance_valid(pl):
 		return
+	_snd("shoot")
 	var base: float = (pl.global_position - hit_center()).angle()
 	var count: int = 3 if kind == 1 else 5
 	var spread: float = 0.35 if kind == 1 else 0.28
@@ -379,9 +398,12 @@ func update_health(value: int) -> void:
 	_spawn_bits(3, 0.6)
 	if health <= 0:
 		_die()
+	else:
+		_snd("hurt")
 
 
 func _die() -> void:
+	_snd("die")
 	state = State.DEAD
 	_state_time = 0.0   # a animação de desmoronar conta a partir daqui
 	_shake = 0.3

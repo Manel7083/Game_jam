@@ -475,7 +475,7 @@ func _draw() -> void:
 	_ic_chapter(screen)
 	_ic_caption(screen, "O castelo do Conde Drácula espera no alto da colina.", 1.2, 6.4)
 	_ic_caption(screen, "Mas a escuridão não está vazia...", 7.6, 11.0)
-	_ic_caption(screen, "E o fardo do lobo desperta.", 11.6, 15.8)
+	_ic_caption(screen, "E o fardo do desperta.", 11.6, 15.8)
 	_ic_caption(screen, "Agora, quem caça... é o lobo.", 18.8, 21.0)
 	_ic_final_title(screen)
 

@@ -22,8 +22,8 @@ const THUNDER_FILE := "res://audio/thunder.wav"
 const TRANSFORM_FILE := "res://audio/menu_transform.wav"
 const HOWL_FILE := "res://audio/menu_howl.wav"
 
-const TITLE_LINE_1 := "THE LEGEND OF DRACULA"
-const TITLE_LINE_2 := "FALLS IN THE MOONLIGHT"
+const TITLE_LINE_1 := "THE LAST LEGEND"
+const TITLE_LINE_2 := ""
 
 # ---- linha do tempo (segundos) ----
 const T_FADE_IN := 1.6      # sai do preto
